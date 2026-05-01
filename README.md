@@ -4,6 +4,7 @@ A full-stack event ticketing and entry management system built for **Malhar Fest
 
 ---
 
+
 # 🚀 FEATURES
 
 ## 👤 User Side
