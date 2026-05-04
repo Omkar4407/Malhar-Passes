@@ -13,18 +13,17 @@ export default function Events() {
   const [loading, setLoading]       = useState(true);
   const [navigating, setNavigating] = useState(null);
   const [error, setError]           = useState("");
-  const [toast, setToast]           = useState("");   // transient 2-second toast
+  const [toast, setToast]           = useState("");
   const toastTimer = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    axios.get(`${API}/events`)
+    axios.get(`${API}/get-events`)
       .then(({ data }) => setEvents(data.events || []))
       .catch(() => setError("Failed to load events. Please refresh."))
       .finally(() => setLoading(false));
   }, []);
 
-  // Show a toast that auto-dismisses after 2 s
   const showToast = (msg) => {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -36,7 +35,7 @@ export default function Events() {
     setNavigating(event.id);
     setError("");
     try {
-      const { data } = await axios.get(`${API}/events/${event.id}/slots`);
+      const { data } = await axios.get(`${API}/get-slots?event_id=${event.id}`);
       const slots = data.slots || [];
 
       if (slots.length === 0) {
@@ -45,7 +44,6 @@ export default function Events() {
         return;
       }
 
-      // Check if at least one slot has been released by admin
       const anyReleased = slots.some((s) => s.is_released === true);
       if (!anyReleased) {
         showToast(`Passes for "${event.name}" haven't been released yet. Check back soon.`);
@@ -53,12 +51,7 @@ export default function Events() {
         return;
       }
 
-      // Pass ALL slots to the Slots page — it handles released vs locked display.
-      // Don't pre-filter here; users should see locked slots with the
-      // "Passes not released yet" label rather than getting a misleading "fully booked" error.
       if (slots.length === 1) {
-        // Single slot: go straight to booking if released and has capacity,
-        // otherwise show the slots page so the user sees the locked state.
         const s = slots[0];
         if (s.is_released && s.booked_count < s.capacity) {
           navigate("/booking", { state: { slot: s, event } });
@@ -79,7 +72,6 @@ export default function Events() {
       <Menu />
       <Header />
 
-      {/* ── Toast notification ── */}
       {toast && (
         <div style={styles.toastOverlay}>
           <div style={styles.toast}>{toast}</div>
@@ -160,7 +152,7 @@ const styles = {
   emptyState: { textAlign: "center", padding: "48px 20px", background: "#fafafa", borderRadius: "12px", border: "2px dashed #eee", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" },
   emptyIcon:  { fontSize: "36px" },
   emptyText:  { color: "#aaa", fontSize: "14px", margin: 0 },
-  errorBox:    { background: "#fff0f0", border: "1px solid #fdd", color: "#d0312d", fontSize: "13px", padding: "8px 12px", borderRadius: "7px", marginBottom: "14px" },
+  errorBox:   { background: "#fff0f0", border: "1px solid #fdd", color: "#d0312d", fontSize: "13px", padding: "8px 12px", borderRadius: "7px", marginBottom: "14px" },
   toastOverlay: { position: "fixed", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 9999, pointerEvents: "none", width: "calc(100% - 32px)", maxWidth: "480px" },
   toast:        { background: "#1A0A00", color: "#FF5C1A", fontSize: "13px", fontWeight: 600, padding: "12px 18px", borderRadius: "12px", boxShadow: "0 4px 20px rgba(0,0,0,0.25)", border: "1px solid rgba(255,92,26,0.3)", textAlign: "center", lineHeight: 1.4 },
 };

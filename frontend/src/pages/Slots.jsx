@@ -6,7 +6,6 @@ import Header from "../components/Header";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
-// Persist event + slots to sessionStorage so a browser refresh can re-hydrate
 function saveToSession(event, slots) {
   try {
     sessionStorage.setItem("slots_event", JSON.stringify(event));
@@ -28,7 +27,6 @@ export default function Slots() {
   const { state }  = useLocation();
   const navigate   = useNavigate();
 
-  // On a browser refresh, router state is lost — fall back to sessionStorage
   const session = loadFromSession();
   const initEvent = state?.event  || session.event;
   const initSlots = state?.slots  || session.slots;
@@ -38,33 +36,26 @@ export default function Slots() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError,  setLoadError]  = useState("");
 
-  // If state was restored from sessionStorage, always re-fetch fresh data
-  // so a browser refresh reflects the latest backend state
   useEffect(() => {
     if (!initEvent) return;
-
-    // Always re-fetch on mount to ensure we have fresh data (handles browser refresh)
     const fetchSlots = async () => {
       setRefreshing(true);
       try {
-        const { data } = await axios.get(`${API}/events/${initEvent.id}/slots`);
+        const { data } = await axios.get(`${API}/get-slots?event_id=${initEvent.id}`);
         const fresh = data.slots || [];
         setSlots(fresh);
         saveToSession(initEvent, fresh);
       } catch (err) {
         console.error("Initial slots fetch error:", err);
-        // If we already have stale data from session, keep showing it
         if (!initSlots) setLoadError("Failed to load slots. Please go back and try again.");
       } finally {
         setRefreshing(false);
       }
     };
-
     fetchSlots();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep sessionStorage in sync whenever event changes
   useEffect(() => {
     if (event && slots) saveToSession(event, slots);
   }, [event, slots]);
@@ -94,9 +85,7 @@ export default function Slots() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      // Fetch all slots — both released and unreleased are shown.
-      // is_released controls whether the book button is enabled.
-      const { data } = await axios.get(`${API}/events/${event.id}/slots`);
+      const { data } = await axios.get(`${API}/get-slots?event_id=${event.id}`);
       const fresh = data.slots || [];
       setSlots(fresh);
       saveToSession(event, fresh);
@@ -115,7 +104,6 @@ export default function Slots() {
       <Menu />
       <Header />
       <div style={styles.page}>
-        {/* ── Hero ── */}
         <div style={styles.hero}>
           <p style={styles.heroLabel}>Select a slot for</p>
           <h1 style={styles.heroTitle}>{event.name}</h1>
@@ -129,7 +117,6 @@ export default function Slots() {
           </span>
         </div>
 
-        {/* ── Controls ── */}
         <div style={styles.controlRow}>
           <span style={styles.slotCount}>
             {slots.length} slot{slots.length !== 1 ? "s" : ""}
@@ -149,7 +136,6 @@ export default function Slots() {
           </div>
         )}
 
-        {/* ── Slot cards ── */}
         {slots.map((slot) => {
           const isReleased = slot.is_released === true;
           const isFull     = (slot.booked_count ?? 0) >= slot.capacity;
@@ -175,7 +161,6 @@ export default function Slots() {
               </div>
 
               <div style={styles.slotRight}>
-                {/* Availability / status badge */}
                 {!isReleased ? (
                   <span style={styles.lockedBadge}>Passes not released yet</span>
                 ) : isFull ? (
@@ -191,8 +176,6 @@ export default function Slots() {
                     {spotsLeft} left
                   </span>
                 )}
-
-                {/* Arrow shown only when bookable */}
                 {canBook && <span style={styles.arrow}>→</span>}
               </div>
             </div>
