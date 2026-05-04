@@ -22,8 +22,8 @@ function SlotRow({ slot, onUpdated }) {
     setSaving(true);
     try {
       await axios.patch(
-        `${API}/admin/slots/${slot.id}`,
-        { name: form.name.trim(), time: form.time.trim(), capacity: Number(form.capacity) || slot.capacity },
+        `${API}/admin-slots`,
+        { slot_id: slot.id, name: form.name.trim(), time: form.time.trim(), capacity: Number(form.capacity) || slot.capacity },
         { headers: adminHeader() }
       );
       setEditing(false);
@@ -34,7 +34,7 @@ function SlotRow({ slot, onUpdated }) {
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete slot "${slot.name}"?`)) return;
-    await axios.delete(`${API}/admin/slots/${slot.id}`, { headers: adminHeader() });
+    await axios.delete(`${API}/admin-slots`, { headers: adminHeader(), data: { slot_id: slot.id } });
     onUpdated();
   };
 
@@ -42,7 +42,7 @@ function SlotRow({ slot, onUpdated }) {
     setToggling(true);
     try {
       await axios.post(
-        `${API}/admin/toggle-release-slot`,
+        `${API}/toggle-release-slot`,
         { slot_id: slot.id, is_released: !isReleased },
         { headers: adminHeader() }
       );
@@ -121,7 +121,7 @@ function SlotAddForm({ eventId, onAdded }) {
     setSaving(true); setError("");
     try {
       await axios.post(
-        `${API}/admin/slots`,
+        `${API}/admin-slots`,
         { name: form.name.trim(), time: form.time.trim(), capacity: Number(form.capacity), event_id: eventId },
         { headers: adminHeader() }
       );
@@ -162,8 +162,8 @@ function EventCard({ event, slots, onUpdated, onDeleted }) {
     setSaving(true); setError("");
     try {
       await axios.patch(
-        `${API}/admin/events/${event.id}`,
-        { name: form.name.trim(), price: Number(form.price) || 0 },
+        `${API}/admin-events`,
+        { event_id: event.id, name: form.name.trim(), price: Number(form.price) || 0 },
         { headers: adminHeader() }
       );
       setEditing(false);
@@ -174,7 +174,7 @@ function EventCard({ event, slots, onUpdated, onDeleted }) {
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete event "${event.name}" and all its slots?`)) return;
-    await axios.delete(`${API}/admin/events/${event.id}`, { headers: adminHeader() });
+    await axios.delete(`${API}/admin-events`, { headers: adminHeader(), data: { event_id: event.id } });
     onDeleted();
   };
 
@@ -236,8 +236,8 @@ export default function AdminEvents() {
   const fetchAll = async () => {
     try {
       const [evRes, slRes] = await Promise.all([
-        axios.get(`${API}/admin/events`, { headers: adminHeader() }),
-        axios.get(`${API}/admin/slots`,  { headers: adminHeader() }),
+        axios.get(`${API}/admin-events`, { headers: adminHeader() }),
+        axios.get(`${API}/admin-slots`,  { headers: adminHeader() }),
       ]);
       setEvents(evRes.data.events || []);
       setSlots(slRes.data.slots   || []);
@@ -254,7 +254,7 @@ export default function AdminEvents() {
     setSaving(true); setAddError("");
     try {
       await axios.post(
-        `${API}/admin/events`,
+        `${API}/admin-events`,
         { name: newEvent.name.trim(), price: Number(newEvent.price) || 0 },
         { headers: adminHeader() }
       );

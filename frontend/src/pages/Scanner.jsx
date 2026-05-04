@@ -121,7 +121,7 @@ export default function Scanner() {
     if (!ticketId) { setScanState("invalid"); setLoading(false); return; }
 
     try {
-      const { data } = await axios.get(`${API}/scanner/ticket/${ticketId}`, {
+      const { data } = await axios.get(`${API}/scanner-ticket?id=${ticketId}`, {
         headers: authHeader(),
       });
       const t = data.ticket;
@@ -141,7 +141,7 @@ export default function Scanner() {
   const handleAllow = async () => {
     setLoading(true);
     try {
-      await axios.post(`${API}/scanner/checkin/${ticket.id}`, {}, { headers: authHeader() });
+      await axios.post(`${API}/scanner-checkin`, { action: "checkin", ticket_id: ticket.id }, { headers: authHeader() });
       setScanState("allowed");
     } catch (err) { console.error("Check-in error:", err); }
     setLoading(false);
@@ -150,7 +150,7 @@ export default function Scanner() {
   const handleReject = async () => {
     setLoading(true);
     try {
-      await axios.post(`${API}/scanner/reject/${ticket.id}`, {}, { headers: authHeader() });
+      await axios.post(`${API}/scanner-checkin`, { action: "reject", ticket_id: ticket.id }, { headers: authHeader() });
       setScanState("rejected");
     } catch (err) { console.error("Reject error:", err); }
     setLoading(false);
