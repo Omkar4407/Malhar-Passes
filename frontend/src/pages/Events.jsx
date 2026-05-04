@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Menu from "../components/Menu";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_BACKEND_URL;
 
 export function bustSlotsCache() {} // no-op — cache removed, kept for import compat
 

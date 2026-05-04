@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Menu from "../components/Menu";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_BACKEND_URL;
 
 function adminHeader() {
   return { Authorization: `Bearer ${localStorage.getItem("adminToken")}` };

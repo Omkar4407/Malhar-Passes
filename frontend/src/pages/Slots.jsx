@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Menu from "../components/Menu";
 import Header from "../components/Header";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // Persist event + slots to sessionStorage so a browser refresh can re-hydrate
 function saveToSession(event, slots) {

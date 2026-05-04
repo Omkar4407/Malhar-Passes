@@ -3,7 +3,7 @@ import axios from "axios";
 import Menu from "../components/Menu";
 import { Html5Qrcode } from "html5-qrcode";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_BACKEND_URL;
 const QR_DIV_ID = "qr-reader";
 
 function authHeader() {

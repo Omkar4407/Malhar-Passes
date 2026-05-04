@@ -1,21 +1,7 @@
-// ── CORS ──────────────────────────────────────────────────────────────────────
-// Mirrors your server.js ALLOWED_ORIGINS logic.
-// Edge Functions need to handle the OPTIONS preflight too.
-
 export function corsHeaders(req: Request): Record<string, string> {
-  const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-
-  const origin = req.headers.get("origin") || "";
-  const allowedOrigin =
-    allowedOrigins.length === 0 || allowedOrigins.includes(origin)
-      ? origin || "*"
-      : "";
-
+  const origin = req.headers.get("origin") || "*";
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
@@ -31,24 +17,16 @@ export function handleCors(req: Request): Response | null {
 }
 
 // Helper: wrap any JSON response with CORS headers
-export function json(
-  req: Request,
-  body: unknown,
-  status = 200
-): Response {
+export function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
-// ── Auth extraction helpers ───────────────────────────────────────────────────
-// Mirrors auth.middleware.js — reads Bearer token and returns payload or throws.
 import { verifyTokenPayload } from "./jwt.ts";
 
-export async function requireUserToken(
-  req: Request
-): Promise<{ phone: string }> {
+export async function requireUserToken(req: Request): Promise<{ phone: string }> {
   const auth = req.headers.get("authorization") || "";
   if (!auth.startsWith("Bearer "))
     throw Object.assign(new Error("Missing token."), { status: 401 });

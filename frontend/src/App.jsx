@@ -14,7 +14,9 @@ import AdminEvents from "./pages/AdminEvents";
 import Account from "./pages/Account";
 import ScannerLogin from "./pages/ScannerLogin";
 
-const API = import.meta.env.VITE_API_URL;
+console.log('ENV CHECK:', import.meta.env.VITE_BACKEND_URL)
+
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // ── FIX: Real token verification via backend ──────────────────────────────────
 // Previously: verifyToken() just checked if a token string existed in

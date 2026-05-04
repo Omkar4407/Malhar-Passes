@@ -26,7 +26,7 @@ export default function ScannerLogin() {
     // This fixes the previous race condition where the token was issued
     // before the client-side email check.
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/scanner-login`, {
+      const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/scanner-login`, {
         email: email.trim().toLowerCase(),
         password,
       });

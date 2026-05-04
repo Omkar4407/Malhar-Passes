@@ -1,9 +1,13 @@
-// NOTE: Razorpay npm package works in Deno via esm.sh
-import Razorpay from "npm:razorpay@2";
 import { handleCors, json, requireUserToken } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 
-// ── Check slot availability — mirrors checkSlotAvailable() in booking.service.js
+const CF_APP_ID = Deno.env.get("CASHFREE_APP_ID")!;
+const CF_SECRET = Deno.env.get("CASHFREE_SECRET_KEY")!;
+const CF_ENV = Deno.env.get("CASHFREE_ENV") || "production"; // "sandbox" or "production"
+const CF_BASE = CF_ENV === "sandbox"
+  ? "https://sandbox.cashfree.com/pg"
+  : "https://api.cashfree.com/pg";
+
 async function checkSlotAvailable(slot_id: string): Promise<boolean> {
   const { data } = await adminSupabase
     .from("slots")
@@ -32,27 +36,42 @@ Deno.serve(async (req) => {
       return json(req, { error: "This slot is sold out." }, 409);
     }
 
-    // Build idempotency receipt — same logic as createRazorpayOrder()
+    // Build unique order_id
     const encoder = new TextEncoder();
-    const data = encoder.encode(`${phone}:${slot_id}:${event_id}`);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const receipt = Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-      .slice(0, 40);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(`${phone}:${slot_id}:${event_id}:${Date.now()}`));
+    const order_id = "malhar_" + Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 20);
 
-    const razorpay = new Razorpay({
-      key_id: Deno.env.get("RAZORPAY_KEY_ID")!,
-      key_secret: Deno.env.get("RAZORPAY_KEY_SECRET")!,
+    const resp = await fetch(`${CF_BASE}/orders`, {
+      method: "POST",
+      headers: {
+        "x-api-version": "2023-08-01",
+        "x-client-id": CF_APP_ID,
+        "x-client-secret": CF_SECRET,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        order_id,
+        order_amount: amount,
+        order_currency: "INR",
+        customer_details: {
+          customer_id: phone,
+          customer_phone: phone,
+        },
+      }),
     });
 
-    const order = await razorpay.orders.create({
-      amount: amount * 100,
-      currency: "INR",
-      receipt,
-    });
+    const order = await resp.json();
+    if (!resp.ok) {
+      console.error("Cashfree create order error:", order);
+      return json(req, { error: "Could not create order. Please try again." }, 500);
+    }
 
-    return json(req, order);
+    // Return order_id + payment_session_id (needed by Cashfree JS SDK)
+    return json(req, {
+      order_id: order.order_id,
+      payment_session_id: order.payment_session_id,
+    });
   } catch (err: unknown) {
     const e = err as { status?: number; message?: string };
     if (e.status === 401 || e.status === 403) return json(req, { error: e.message }, e.status);

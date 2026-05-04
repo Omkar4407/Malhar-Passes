@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import Menu from "../components/Menu";
 import Header from "../components/Header";
 
-const API = import.meta.env.VITE_API_URL;
+const API = import.meta.env.VITE_BACKEND_URL;
 
 function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem("userToken")}` };

@@ -24,7 +24,7 @@ export default function AdminLogin() {
     // This fixes the race condition where a token was issued before the
     // client-side DB check — the token is now ONLY issued if the email is valid.
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/admin-login`, {
+      const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin-login`, {
         email: email.trim().toLowerCase(),
         password,
       });
