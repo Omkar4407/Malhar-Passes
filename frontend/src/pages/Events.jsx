@@ -6,6 +6,11 @@ import Menu from "../components/Menu";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
+function authHeader() {
+  const token = localStorage.getItem("userToken");
+  return { Authorization: `Bearer ${token}` };
+}
+
 export function bustSlotsCache() {} // no-op — cache removed, kept for import compat
 
 export default function Events() {
@@ -54,6 +59,26 @@ export default function Events() {
       if (slots.length === 1) {
         const s = slots[0];
         if (s.is_released && s.booked_count < s.capacity) {
+          // Pre-check duplicate before going to booking
+          try {
+            const { data: check } = await axios.get(
+              `${API}/check-slot?slot_id=${s.id}`,
+              { headers: authHeader() }
+            );
+            if (!check.allowed) {
+              if (check.reason === "DUPLICATE_TICKET") {
+                showToast("You already have a ticket for this slot.");
+              } else if (check.reason === "SLOT_FULL") {
+                showToast("This slot is sold out.");
+              } else {
+                showToast(check.message || "Cannot book this slot.");
+              }
+              setNavigating(null);
+              return;
+            }
+          } catch {
+            // If check fails (e.g. not logged in), let booking page handle it
+          }
           navigate("/booking", { state: { slot: s, event } });
         } else {
           navigate("/slots", { state: { slots, event } });

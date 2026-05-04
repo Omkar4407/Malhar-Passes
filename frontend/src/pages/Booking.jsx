@@ -126,7 +126,11 @@ export default function Booking() {
     } catch (err) {
       const msg = err.response?.data?.error;
       if (err.response?.status === 409) {
-        setError("Sorry, this slot just sold out. Please go back and pick another.");
+        if (err.response?.data?.code === "DUPLICATE_TICKET") {
+          setError("You already have a ticket for this slot. You can book a different slot for this event.");
+        } else {
+          setError("Sorry, this slot just sold out. Please go back and pick another.");
+        }
       } else {
         setError(msg || "Booking failed. Please try again.");
       }
@@ -205,7 +209,11 @@ export default function Booking() {
     } catch (err) {
       const msg = err.response?.data?.error;
       if (err.response?.status === 409) {
-        setError("This slot just sold out. Please go back and pick another.");
+        if (err.response?.data?.code === "DUPLICATE_TICKET") {
+          setError("You already have a ticket for this slot. You can book a different slot for this event.");
+        } else {
+          setError("This slot just sold out. Please go back and pick another.");
+        }
       } else {
         setError(msg || "Could not initiate payment. Please try again.");
       }

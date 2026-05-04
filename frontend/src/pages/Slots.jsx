@@ -6,6 +6,11 @@ import Header from "../components/Header";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
+function authHeader() {
+  const token = localStorage.getItem("userToken");
+  return { Authorization: `Bearer ${token}` };
+}
+
 function saveToSession(event, slots) {
   try {
     sessionStorage.setItem("slots_event", JSON.stringify(event));
@@ -95,7 +100,33 @@ export default function Slots() {
     setRefreshing(false);
   };
 
-  const handleSelect = (slot) => {
+  const [checkingSlot, setCheckingSlot] = useState(null);
+  const [checkError, setCheckError] = useState("");
+
+  const handleSelect = async (slot) => {
+    if (checkingSlot) return;
+    setCheckingSlot(slot.id);
+    setCheckError("");
+    try {
+      const { data: check } = await axios.get(
+        `${API}/check-slot?slot_id=${slot.id}`,
+        { headers: authHeader() }
+      );
+      if (!check.allowed) {
+        if (check.reason === "DUPLICATE_TICKET") {
+          setCheckError("You already have a ticket for this slot. You can book a different slot for this event.");
+        } else if (check.reason === "SLOT_FULL") {
+          setCheckError("This slot is sold out. Please pick another.");
+        } else {
+          setCheckError(check.message || "Cannot book this slot.");
+        }
+        setCheckingSlot(null);
+        return;
+      }
+    } catch {
+      // If not logged in or check fails, let booking page handle auth
+    }
+    setCheckingSlot(null);
     navigate("/booking", { state: { slot, event } });
   };
 
@@ -130,6 +161,10 @@ export default function Slots() {
           </button>
         </div>
 
+        {checkError && (
+          <div style={{ ...styles.errorBox, marginBottom: "12px" }}>{checkError}</div>
+        )}
+
         {slots.length === 0 && (
           <div style={styles.emptyBox}>
             No slots available. Try refreshing.
@@ -145,11 +180,11 @@ export default function Slots() {
           return (
             <div
               key={slot.id}
-              onClick={() => canBook && handleSelect(slot)}
+              onClick={() => canBook && !checkingSlot && handleSelect(slot)}
               style={{
                 ...styles.slotCard,
-                opacity: canBook ? 1 : 0.72,
-                cursor:  canBook ? "pointer" : "default",
+                opacity: canBook && !checkingSlot ? 1 : 0.72,
+                cursor:  canBook && !checkingSlot ? "pointer" : "default",
               }}
             >
               <div style={styles.slotLeft}>
@@ -176,7 +211,11 @@ export default function Slots() {
                     {spotsLeft} left
                   </span>
                 )}
-                {canBook && <span style={styles.arrow}>→</span>}
+                {canBook && (
+                  <span style={styles.arrow}>
+                    {checkingSlot === slot.id ? "…" : "→"}
+                  </span>
+                )}
               </div>
             </div>
           );
