@@ -1,0 +1,13 @@
+:root {
+  --orange: #FF5C1A;
+  --orange-dark: #CC3D00;
+  --cream: #FFF8F0;
+  --ink: #1A0A00;
+  --ink-light: #5C3D28;
+  --border: rgba(90,40,10,0.12);
+}
+
+body {
+  background: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+}

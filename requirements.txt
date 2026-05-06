@@ -1,0 +1,25 @@
+# FRONTEND DEPENDENCIES
+react
+react-dom
+react-router-dom
+axios
+qrcode
+html5-qrcode
+@supabase/supabase-js
+
+# DEV DEPENDENCIES
+vite
+tailwindcss
+postcss
+autoprefixer
+
+# BACKEND DEPENDENCIES
+express
+cors
+dotenv
+axios
+razorpay
+crypto (built-in)
+
+# OPTIONAL
+ngrok (for mobile testing)
