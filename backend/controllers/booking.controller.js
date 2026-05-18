@@ -9,7 +9,7 @@ import {
 
 // ── GET /my-tickets ───────────────────────────────────────────────────────────
 // Returns all tickets for the authenticated user. Phone comes from the JWT
-// (set by requireUserToken middleware) — never trusted from the request body.
+// (set by requireVerifiedPhone middleware) — never trusted from the request body.
 // Uses service-role key on the backend so Supabase RLS on the tickets table
 // never blocks the read, regardless of how policies are configured.
 export async function getMyTickets(req, res) {

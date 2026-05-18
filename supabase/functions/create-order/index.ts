@@ -1,4 +1,4 @@
-import { handleCors, json, requireUserToken } from "../_shared/http.ts";
+import { handleCors, json, requireUserToken, authErrorJson } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 
 const CF_APP_ID = Deno.env.get("CASHFREE_APP_ID")!;
@@ -73,8 +73,8 @@ Deno.serve(async (req) => {
       payment_session_id: order.payment_session_id,
     });
   } catch (err: unknown) {
-    const e = err as { status?: number; message?: string };
-    if (e.status === 401 || e.status === 403) return json(req, { error: e.message }, e.status);
+    const r = authErrorJson(req, err);
+    if (r) return r;
     console.error("create-order error:", err);
     return json(req, { error: "Could not create order. Please try again." }, 500);
   }
