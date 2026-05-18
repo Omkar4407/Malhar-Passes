@@ -3,22 +3,19 @@ import Menu from "../components/Menu";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
   const phone = localStorage.getItem("userPhone");
 
   return (
     <>
       <Menu />
       <div style={styles.page}>
-        {/* ── Hero ── */}
         <div style={styles.hero}>
           <div style={styles.badge}>Malhar Fest</div>
           <h1 style={styles.title}>Welcome{phone ? " Back!" : "!"}</h1>
-          {phone && <p style={styles.subtitle}>{phone}</p>}
+          {phone && <p style={styles.subtitle}>+91 {phone}</p>}
           <p style={styles.subtitle}>What would you like to do today?</p>
         </div>
 
-        {/* ── Actions ── */}
         <div style={styles.grid}>
           <button style={styles.actionCard} onClick={() => navigate("/events")}>
             <span style={styles.actionIcon}>🎟️</span>
@@ -136,3 +133,4 @@ const styles = {
     flexShrink: 0,
   },
 };
+

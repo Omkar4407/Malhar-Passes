@@ -1,4 +1,4 @@
-import { signToken } from "../services/jwt.service.js";
+import { signToken, verifyToken } from "../services/jwt.service.js";
 import {
   hashOtp,
   sendSmsOtp,
@@ -8,7 +8,7 @@ import {
   deleteOtp,
   MAX_OTP_ATTEMPTS,
 } from "../services/otp.service.js";
-import { upsertUser } from "../services/booking.service.js";
+import { linkPhoneAfterOtp, fetchUserProfileForAttendee } from "../services/booking.service.js";
 
 export async function sendOtp(req, res) {
   const { phone } = req.body;
@@ -58,10 +58,29 @@ export async function verifyOtp(req, res) {
       });
     }
 
-    // Correct OTP — clean up, upsert user, issue JWT
+    let googleSubFromToken = null;
+    const auth = req.headers.authorization;
+    if (auth?.startsWith("Bearer ")) {
+      try {
+        const p = verifyToken(auth.slice(7));
+        if (p.role === "user" && p.google_sub && !p.phone) {
+          googleSubFromToken = p.google_sub;
+        }
+      } catch {
+        return res.status(401).json({ error: "Invalid session. Sign in again." });
+      }
+    }
+
+    // Correct OTP — clean up, link phone + optional Google account, issue JWT
     await deleteOtp(phone);
-    await upsertUser(phone);
-    const token = signToken({ role: "user", phone });
+    await linkPhoneAfterOtp(phone, googleSubFromToken);
+
+    const profile = await fetchUserProfileForAttendee({ phone });
+    const payload = { role: "user", phone };
+    if (profile?.google_sub) payload.google_sub = profile.google_sub;
+    if (profile?.email) payload.email = profile.email;
+
+    const token = signToken(payload);
     return res.json({ success: true, token });
   } catch (err) {
     console.error("verify-otp error:", err);

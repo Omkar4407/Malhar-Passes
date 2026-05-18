@@ -1,4 +1,4 @@
-import { handleCors, json, requireUserToken } from "../_shared/http.ts";
+import { handleCors, json, requireUserToken, authErrorJson } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 
 Deno.serve(async (req) => {
@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
 
     return json(req, { success: true, ticket });
   } catch (err: unknown) {
-    const e = err as { status?: number; message?: string };
-    if (e.status === 401 || e.status === 403) return json(req, { error: e.message }, e.status);
+    const r = authErrorJson(req, err);
+    if (r) return r;
     console.error("book-free error:", err);
     return json(req, { error: "Booking failed. Please try again." }, 500);
   }

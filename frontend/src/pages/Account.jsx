@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from "react";
+import axios from "axios";
 import { supabase } from "../lib/supabase";
 import { lsCached, lsBust } from "../lib/cache";
 import Menu from "../components/Menu";
 import Header from "../components/Header";
+
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // MED #4: Allowed MIME types and max file size
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -10,7 +13,7 @@ const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROFILE_TTL = 5 * 60_000; // 5 minutes — profile rarely changes
 
 export default function Account() {
-  const phone = localStorage.getItem("userPhone");
+  const phoneLs = localStorage.getItem("userPhone");
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,14 +34,13 @@ export default function Account() {
 
   const fetchUser = async () => {
     try {
-      const data = await lsCached(`profile:${phone}`, PROFILE_TTL, async () => {
-        const { data: row, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("phone_number", phone)
-          .maybeSingle();
-        if (error) throw error;
-        return row;
+      const token = localStorage.getItem("userToken");
+      const cacheKey = `profile:${token?.slice(-24) || "anon"}`;
+      const data = await lsCached(cacheKey, PROFILE_TTL, async () => {
+        const { data: out } = await axios.get(`${API}/user-profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        return out?.user ?? null;
       });
       if (data) {
         setUser(data);
@@ -105,6 +107,14 @@ export default function Account() {
       photoUrl = data.publicUrl;
     }
 
+    const filterCol = user?.phone_number ? "phone_number" : "google_sub";
+    const filterVal = user?.phone_number || user?.google_sub;
+    if (!filterVal) {
+      showToast("error", "Verify your phone before updating profile.");
+      setSaving(false);
+      return;
+    }
+
     const { error: updateErr } = await supabase
       .from("users")
       .update({
@@ -113,15 +123,15 @@ export default function Account() {
         college: form.college,
         photo_url: photoUrl,
       })
-      .eq("phone_number", phone);
+      .eq(filterCol, filterVal);
 
     if (updateErr) {
       // LOW #1: Don't expose DB error details
       console.error("Profile update error:", updateErr);
       showToast("error", "Update failed. Please try again.");
     } else {
-      // Bust the profile cache so the next load gets the updated data
-      lsBust(`profile:${phone}`);
+      const tok = localStorage.getItem("userToken");
+      lsBust(`profile:${tok?.slice(-24) || "anon"}`);
       showToast("success", "Profile updated successfully!");
       fetchUser();
       setPhoto(null);
@@ -131,7 +141,8 @@ export default function Account() {
   };
 
   const avatarSrc = photoPreview || user?.photo_url || null;
-  const initials = (form.full_name || phone || "?")[0].toUpperCase();
+  const initials = (form.full_name || phoneLs || user?.email || "?")[0].toUpperCase();
+  const phoneDisplay = user?.phone_number || phoneLs || "";
 
   if (loading) return (
     <>
@@ -181,7 +192,9 @@ export default function Account() {
             style={{ display: "none" }}
           />
           <p style={styles.avatarHint}>Tap to change photo (JPEG/PNG/WebP, max 5MB)</p>
-          <p style={styles.phoneDisplay}>{phone}</p>
+          <p style={styles.phoneDisplay}>
+            {phoneDisplay ? `+91 ${phoneDisplay}` : "Phone not verified — finish OTP on Login"}
+          </p>
         </div>
 
         {/* ── Card ── */}
@@ -212,7 +225,8 @@ export default function Account() {
           <div style={styles.fieldWrap}>
             <label style={styles.label}>Phone Number</label>
             <input
-              value={phone}
+              value={phoneDisplay ? `+91 ${phoneDisplay}` : ""}
+              placeholder="Verify via Login (OTP)"
               disabled
               style={{ ...styles.input, ...styles.inputDisabled }}
             />

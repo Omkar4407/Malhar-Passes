@@ -19,6 +19,7 @@ export default function Ticket() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState("");
+  const [phoneRequired, setPhoneRequired] = useState(false);
 
   useEffect(() => {
     fetchTickets();
@@ -27,6 +28,7 @@ export default function Ticket() {
   const fetchTickets = async () => {
     setLoading(true);
     setError("");
+    setPhoneRequired(false);
     try {
       // Call backend /my-tickets — uses service-role key server-side,
       // so Supabase RLS on the tickets table never blocks this read.
@@ -37,10 +39,15 @@ export default function Ticket() {
     } catch (err) {
       console.error("Tickets fetch error:", err);
       if (err.response?.status === 401) {
-        // Token expired — send back to login
         localStorage.removeItem("userToken");
         localStorage.removeItem("userPhone");
         navigate("/", { replace: true });
+      } else if (
+        err.response?.status === 403 &&
+        err.response?.data?.code === "PHONE_REQUIRED"
+      ) {
+        setPhoneRequired(true);
+        setError("Verify your phone number to view tickets.");
       } else {
         setError("Failed to load tickets. Please refresh.");
       }
@@ -64,7 +71,20 @@ export default function Ticket() {
           )}
         </div>
 
-        {error && <div style={styles.errorBox}>{error}</div>}
+        {error && (
+          <div style={styles.errorWrap}>
+            <div style={styles.errorBox}>{error}</div>
+            {phoneRequired && (
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                style={styles.verifyLinkBtn}
+              >
+                Verify phone on Login →
+              </button>
+            )}
+          </div>
+        )}
 
         {loading && (
           <div style={styles.emptyState}>
@@ -227,5 +247,17 @@ const styles = {
   emptyIcon: { fontSize: "36px" },
   emptyText: { color: "#aaa", fontSize: "14px", margin: 0 },
   bookBtn: { marginTop: "4px", padding: "10px 20px", background: "#FF5C1A", color: "white", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "14px", cursor: "pointer" },
-  errorBox: { background: "#fff0f0", border: "1px solid #fdd", color: "#d0312d", fontSize: "13px", padding: "8px 12px", borderRadius: "7px", marginBottom: "14px" },
+  errorWrap: { marginBottom: "14px", display: "flex", flexDirection: "column", gap: "10px" },
+  errorBox: { background: "#fff0f0", border: "1px solid #fdd", color: "#d0312d", fontSize: "13px", padding: "8px 12px", borderRadius: "7px" },
+  verifyLinkBtn: {
+    alignSelf: "flex-start",
+    padding: "8px 14px",
+    background: "#FF5C1A",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    fontWeight: 700,
+    fontSize: "13px",
+    cursor: "pointer",
+  },
 };

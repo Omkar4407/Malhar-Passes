@@ -1,5 +1,5 @@
 import { handleCors, json } from "../_shared/http.ts";
-import { signToken } from "../_shared/jwt.ts";
+import { signToken, verifyTokenPayload } from "../_shared/jwt.ts";
 import {
   hashOtp,
   fetchOtpRecord,
@@ -7,13 +7,7 @@ import {
   deleteOtp,
   MAX_OTP_ATTEMPTS,
 } from "../_shared/otp.ts";
-import adminSupabase from "../_shared/supabase.ts";
-
-async function upsertUser(phone: string) {
-  await adminSupabase
-    .from("users")
-    .upsert([{ phone_number: phone }], { onConflict: "phone_number", ignoreDuplicates: true });
-}
+import { linkPhoneAfterOtp, fetchUserProfileForAttendee } from "../_shared/attendee-users.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -48,10 +42,28 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    // Correct — clean up, upsert user, issue JWT
+    let googleSubFromToken: string | null = null;
+    const auth = req.headers.get("authorization") || "";
+    if (auth.startsWith("Bearer ")) {
+      try {
+        const p = await verifyTokenPayload(auth.slice(7));
+        if (p.role === "user" && p.google_sub && !p.phone) {
+          googleSubFromToken = p.google_sub as string;
+        }
+      } catch {
+        return json(req, { error: "Invalid session. Sign in again." }, 401);
+      }
+    }
+
     await deleteOtp(phone);
-    await upsertUser(phone);
-    const token = await signToken({ role: "user", phone });
+    await linkPhoneAfterOtp(phone, googleSubFromToken);
+
+    const profile = await fetchUserProfileForAttendee({ phone });
+    const tokenPayload: Record<string, string> = { role: "user", phone };
+    if (profile?.google_sub) tokenPayload.google_sub = profile.google_sub as string;
+    if (profile?.email) tokenPayload.email = profile.email as string;
+
+    const token = await signToken(tokenPayload);
     return json(req, { success: true, token });
   } catch (err) {
     console.error("verify-otp error:", err);

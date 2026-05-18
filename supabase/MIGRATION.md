@@ -15,6 +15,8 @@ supabase/functions/
 ├── admin-login/index.ts      ← POST /admin-login
 ├── scanner-login/index.ts    ← POST /scanner-login
 ├── verify-token/index.ts     ← POST /verify-token
+├── google-auth/index.ts      ← POST /google-auth
+├── user-profile/index.ts     ← GET  /user-profile
 ├── create-order/index.ts     ← POST /create-order
 ├── verify-payment/index.ts   ← POST /verify-payment
 ├── book-free/index.ts        ← POST /book-free
@@ -39,6 +41,8 @@ supabase/functions/
 | POST `/admin-login`                    | `.../functions/v1/admin-login`                              | base URL only |
 | POST `/scanner-login`                  | `.../functions/v1/scanner-login`                            | base URL only |
 | POST `/verify-token`                   | `.../functions/v1/verify-token`                             | base URL only |
+| POST `/google-auth`                    | `.../functions/v1/google-auth`                              | base URL only |
+| GET  `/user-profile`                   | `.../functions/v1/user-profile`                             | use this path (not `/user/profile`) |
 | GET  `/my-tickets`                     | `.../functions/v1/my-tickets`                               | base URL only |
 | POST `/create-order`                   | `.../functions/v1/create-order`                             | base URL only |
 | POST `/verify-payment`                 | `.../functions/v1/verify-payment`                           | base URL only |
@@ -89,6 +93,9 @@ supabase secrets set OTP_HMAC_SECRET=your_otp_hmac_secret
 supabase secrets set FAST2SMS_API_KEY=your_fast2sms_key
 supabase secrets set ALLOWED_ORIGINS=https://your-frontend.vercel.app
 supabase secrets set DEV_MODE=false
+
+# Google Sign-In (attendee) — Web client ID only (same as VITE_GOOGLE_CLIENT_ID)
+supabase secrets set GOOGLE_CLIENT_ID=867906182428-xxxx.apps.googleusercontent.com
 ```
 SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically — no need to set.
 
