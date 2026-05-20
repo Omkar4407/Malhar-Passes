@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import QRCode from "qrcode";
-import Menu from "../components/Menu";
 import Header from "../components/Header";
+import { Ticket as TicketIcon, Calendar, Clock, MapPin, Download, ChevronDown, ChevronUp } from "lucide-react";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
@@ -11,7 +11,6 @@ function authHeader() {
   return { Authorization: `Bearer ${localStorage.getItem("userToken")}` };
 }
 
-// No-op — kept so Booking.jsx import doesn't break
 export function bustTicketsCache() {}
 
 export default function Ticket() {
@@ -28,16 +27,12 @@ export default function Ticket() {
     setLoading(true);
     setError("");
     try {
-      // Call backend /my-tickets — uses service-role key server-side,
-      // so Supabase RLS on the tickets table never blocks this read.
       const { data } = await axios.get(`${API}/my-tickets`, {
         headers: authHeader(),
       });
       setTickets(data.tickets || []);
     } catch (err) {
-      console.error("Tickets fetch error:", err);
       if (err.response?.status === 401) {
-        // Token expired — send back to login
         localStorage.removeItem("userToken");
         localStorage.removeItem("userPhone");
         navigate("/", { replace: true });
@@ -50,43 +45,61 @@ export default function Ticket() {
   };
 
   return (
-    <>
-      <Menu />
+    <div style={{ minHeight: "100vh", position: "relative" }}>
       <Header />
-      <div style={styles.page}>
 
-        <div style={styles.titleRow}>
-          <h1 style={styles.pageTitle}>My Tickets</h1>
+      {/* Ambient Glow */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00abff] rounded-full blur-[150px] opacity-[0.08] pointer-events-none -z-10" />
+
+      <div className="max-w-xl mx-auto px-5 py-8 space-y-6 relative z-10">
+        
+        <div className="flex items-center justify-between">
+          <h1 className="text-5xl font-black text-[#eedcff] tracking-wide" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+            My Tickets
+          </h1>
           {!loading && tickets.length > 0 && (
-            <span style={styles.count}>
-              {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
+            <span className="px-4 py-1.5 rounded-full bg-[#6f24bb]/20 border border-[#dab8ff]/20 text-[#dab8ff] text-xs font-bold uppercase tracking-wider">
+              {tickets.length} Ticket{tickets.length !== 1 ? "s" : ""}
             </span>
           )}
         </div>
 
-        {error && <div style={styles.errorBox}>{error}</div>}
+        {error && (
+          <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm">
+            {error}
+          </div>
+        )}
 
         {loading && (
-          <div style={styles.emptyState}>
-            <p style={styles.emptyText}>Loading tickets…</p>
+          <div className="flex flex-col items-center justify-center p-16 glass-card">
+            <div className="w-10 h-10 border-4 border-[#ff00cf]/20 border-t-[#ff00cf] rounded-full animate-spin mb-4" />
+            <p className="text-[#a78899] font-medium">Loading your passes...</p>
           </div>
         )}
 
         {!loading && tickets.length === 0 && !error && (
-          <div style={styles.emptyState}>
-            <span style={styles.emptyIcon}>🎟️</span>
-            <p style={styles.emptyText}>No tickets yet. Book an event to get started!</p>
-            <button onClick={() => navigate("/events")} style={styles.bookBtn}>
-              Browse Events →
+          <div className="flex flex-col items-center justify-center p-16 glass-card text-center space-y-4">
+            <div className="w-20 h-20 rounded-full bg-[#ff00cf]/10 flex items-center justify-center text-[#ffaddf] mb-2">
+              <TicketIcon size={40} strokeWidth={1.5} />
+            </div>
+            <p className="text-[#eedcff] font-semibold text-lg">No tickets found</p>
+            <p className="text-[#a78899] text-sm max-w-[250px]">You haven't booked any passes yet. Browse events to secure your spot.</p>
+            <button 
+              onClick={() => navigate("/events")}
+              className="mt-4 px-8 py-3 bg-gradient-to-r from-[#ff00cf] to-[#6f24bb] rounded-xl font-bold text-white shadow-[0_0_20px_rgba(255,0,207,0.3)] hover:shadow-[0_0_30px_rgba(255,0,207,0.5)] transition-all"
+            >
+              Explore Events
             </button>
           </div>
         )}
 
-        {tickets.map((ticket) => (
-          <TicketCard key={ticket.id} ticket={ticket} />
-        ))}
+        <div className="space-y-6">
+          {tickets.map((ticket) => (
+            <TicketCard key={ticket.id} ticket={ticket} />
+          ))}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -98,7 +111,7 @@ function TicketCard({ ticket }) {
   useEffect(() => {
     QRCode.toDataURL(
       JSON.stringify({ ticket_id: ticket.id }),
-      { width: 200, margin: 2 }
+      { width: 250, margin: 2, color: { dark: '#0b011c', light: '#ffffff' } }
     )
       .then(setQr)
       .catch(() => setQrError(true));
@@ -109,80 +122,114 @@ function TicketCard({ ticket }) {
   const isCheckedIn = ticket.checked_in === true;
 
   return (
-    <div style={styles.ticketCard}>
-      <div style={styles.topBand}>
-        <div>
-          <p style={styles.bandLabel}>Event</p>
-          <h2 style={styles.bandTitle}>{ticket.slots?.events?.name || "MALHAR"}</h2>
-        </div>
-        <span style={{
-          ...styles.statusBadge,
-          background: isRejected ? "#fff0f0" : isCheckedIn ? "#E6FFF2" : "#FFF3E0",
-          color: isRejected ? "#d0312d" : isCheckedIn ? "#1a7a45" : "#b45309",
-        }}>
-          {isRejected ? "🚫 Rejected" : isCheckedIn ? "✓ Checked In" : "Not Checked In"}
-        </span>
-      </div>
-
-      <div style={styles.perforate} />
-
-      <div style={styles.body}>
-        <div style={styles.profileRow}>
-          {ticket.photo_url ? (
-            <img
-              src={ticket.photo_url}
-              alt={ticket.name}
-              style={styles.photo}
-              onError={(e) => { e.target.style.display = "none"; }}
-            />
-          ) : (
-            <div style={styles.photoPlaceholder}>
-              {ticket.name?.[0]?.toUpperCase() || "?"}
-            </div>
-          )}
-          <div style={styles.profileInfo}>
-            <p style={styles.name}>{ticket.name}</p>
-            <p style={styles.detail}>{ticket.college}</p>
-            <p style={styles.detail}>{ticket.phone}</p>
+    <div className="glass-card overflow-hidden group">
+      {/* Top Banner section */}
+      <div className="relative p-6 bg-gradient-to-br from-[#261938] to-[#140725] border-b border-white/5">
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#00abff] via-[#ff00cf] to-[#ff6b00]" />
+        
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <p className="text-[10px] font-bold text-[#a78899] uppercase tracking-[0.2em] mb-1">Event Pass</p>
+            <h2 className="text-2xl font-black text-[#eedcff] uppercase tracking-wide font-['Bebas_Neue']">
+              {ticket.slots?.events?.name || "MALHAR"}
+            </h2>
           </div>
+          <StatusBadge isRejected={isRejected} isCheckedIn={isCheckedIn} />
         </div>
 
         {ticket.slots && (
-          <div style={styles.slotRow}>
-            {ticket.slots.name  && <InfoChip icon="🎪" text={ticket.slots.name} />}
-            {ticket.slots.date  && <InfoChip icon="📅" text={ticket.slots.date} />}
-            {ticket.slots.time  && <InfoChip icon="🕐" text={ticket.slots.time} />}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {ticket.slots.name && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0b011c]/50 border border-white/5 text-[#dab8ff] text-xs font-semibold">
+                <MapPin size={12} className="text-[#ff00cf]" /> {ticket.slots.name}
+              </div>
+            )}
+            {ticket.slots.date && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0b011c]/50 border border-white/5 text-[#dab8ff] text-xs font-semibold">
+                <Calendar size={12} className="text-[#00abff]" /> {ticket.slots.date}
+              </div>
+            )}
+            {ticket.slots.time && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0b011c]/50 border border-white/5 text-[#dab8ff] text-xs font-semibold">
+                <Clock size={12} className="text-[#ff6b00]" /> {ticket.slots.time}
+              </div>
+            )}
           </div>
         )}
+      </div>
 
-        {isPaid && (
-          <span style={{ ...styles.paymentBadge, background: "#E6FFF2", color: "#1a7a45" }}>
-            ✓ Payment Confirmed
-          </span>
-        )}
+      {/* Perforation Line */}
+      <div className="relative h-6 bg-[#1a0d2b]">
+        <div className="absolute top-1/2 left-0 w-full h-[1px] border-t-2 border-dashed border-[#a78899]/20" />
+        <div className="absolute top-1/2 left-[-12px] w-6 h-6 bg-[#0b011c] rounded-full -translate-y-1/2 shadow-inner" />
+        <div className="absolute top-1/2 right-[-12px] w-6 h-6 bg-[#0b011c] rounded-full -translate-y-1/2 shadow-inner" />
+      </div>
 
-        <button onClick={() => setExpanded((v) => !v)} style={styles.qrToggle}>
-          {expanded ? "Hide QR Code ▲" : "Show QR Code ▼"}
+      {/* Body section */}
+      <div className="p-6 bg-[#1a0d2b]/50">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative">
+            {ticket.photo_url ? (
+              <img
+                src={ticket.photo_url}
+                alt={ticket.name}
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-[#ff00cf]/30 shadow-[0_0_15px_rgba(255,0,207,0.15)]"
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6f24bb] to-[#ff00cf] text-white font-black text-2xl flex items-center justify-center shadow-[0_0_15px_rgba(255,0,207,0.2)]">
+                {ticket.name?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
+            {isPaid && (
+              <div className="absolute -bottom-2 -right-2 bg-[#16a34a] text-white text-[9px] font-bold px-2 py-0.5 rounded-md border border-[#0b011c] shadow-lg">
+                PAID
+              </div>
+            )}
+          </div>
+          
+          <div>
+            <p className="text-lg font-bold text-[#eedcff] mb-0.5">{ticket.name}</p>
+            <p className="text-sm text-[#a78899] font-medium">{ticket.college}</p>
+            <p className="text-xs text-[#a78899]/70 mt-1 font-mono">{ticket.phone}</p>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => setExpanded(!expanded)} 
+          className="w-full flex items-center justify-center gap-2 py-3 bg-[#261938]/50 hover:bg-[#312443]/80 border border-[#a78899]/10 rounded-xl text-[#ffaddf] text-sm font-bold transition-colors"
+        >
+          {expanded ? (
+             <><ChevronUp size={16} /> Hide QR Code</>
+          ) : (
+             <><ChevronDown size={16} /> Reveal QR Code</>
+          )}
         </button>
 
         {expanded && (
-          <div style={styles.qrSection}>
-            {qrError
-              ? <p style={{ color: "#d0312d", fontSize: "13px" }}>Failed to generate QR.</p>
-              : qr
-                ? <>
-                    <img src={qr} alt="QR Code" style={styles.qrImg} />
-                    <a
-                      href={qr}
-                      download={`ticket-${ticket.id}.png`}
-                      style={styles.downloadBtn}
-                    >
-                      ⬇ Download QR
-                    </a>
-                  </>
-                : <p style={{ color: "#aaa", fontSize: "13px" }}>Generating…</p>
-            }
-            <p style={styles.ticketId}>ID: {ticket.id}</p>
+          <div className="mt-4 pt-4 border-t border-white/5 flex flex-col items-center animate-in slide-in-from-top-2 duration-300">
+            <div className="p-4 bg-white rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)] mb-4">
+              {qrError ? (
+                <p className="text-red-500 text-sm font-bold p-8">Failed to generate QR</p>
+              ) : qr ? (
+                <img src={qr} alt="QR Code" className="w-48 h-48" />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center text-gray-400">Generating...</div>
+              )}
+            </div>
+            
+            <div className="flex items-center justify-between w-full max-w-[240px]">
+              <p className="text-[10px] text-[#a78899] font-mono tracking-wider">ID: {ticket.id.slice(0,12)}...</p>
+              {qr && (
+                <a
+                  href={qr}
+                  download={`ticket-${ticket.id}.png`}
+                  className="flex items-center gap-1.5 text-xs font-bold text-[#00abff] hover:text-[#92ccff] transition-colors"
+                >
+                  <Download size={14} /> Save Image
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -190,42 +237,24 @@ function TicketCard({ ticket }) {
   );
 }
 
-function InfoChip({ icon, text }) {
+function StatusBadge({ isRejected, isCheckedIn }) {
+  if (isRejected) {
+    return (
+      <span className="px-3 py-1 rounded-full bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(147,0,10,0.2)]">
+        🚫 Rejected
+      </span>
+    );
+  }
+  if (isCheckedIn) {
+    return (
+      <span className="px-3 py-1 rounded-full bg-[#16a34a]/20 border border-[#16a34a]/30 text-[#16a34a] text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(22,163,74,0.2)]">
+        ✓ Checked In
+      </span>
+    );
+  }
   return (
-    <span style={{ fontSize: "12px", background: "#f5f5f5", color: "#444", padding: "3px 10px", borderRadius: "20px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-      {icon} {text}
+    <span className="px-3 py-1 rounded-full bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] text-[10px] font-bold uppercase tracking-wider">
+      Active
     </span>
   );
 }
-
-const styles = {
-  page: { padding: "20px", maxWidth: "560px", margin: "0 auto", fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#1a1a1a" },
-  titleRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" },
-  pageTitle: { fontSize: "22px", fontWeight: 800, margin: 0, letterSpacing: "-0.02em" },
-  count: { fontSize: "12px", fontWeight: 600, color: "#aaa", background: "#f5f5f5", padding: "3px 10px", borderRadius: "20px" },
-  ticketCard: { background: "#1A0A00", borderRadius: "16px", marginBottom: "20px", overflow: "hidden", boxShadow: "0 4px 16px rgba(0,0,0,0.15)" },
-  topBand: { padding: "18px 20px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-  bandLabel: { color: "#aaa", fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 4px" },
-  bandTitle: { color: "#FF5C1A", fontSize: "20px", fontWeight: 900, margin: 0, letterSpacing: "0.04em" },
-  statusBadge: { fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "20px", alignSelf: "flex-start" },
-  perforate: { borderTop: "2px dashed rgba(255,255,255,0.15)", margin: "0 16px" },
-  body: { background: "#fff", padding: "18px 20px", display: "flex", flexDirection: "column", gap: "14px" },
-  profileRow: { display: "flex", gap: "14px", alignItems: "center" },
-  photo: { width: "56px", height: "56px", borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid #eee" },
-  photoPlaceholder: { width: "56px", height: "56px", borderRadius: "50%", background: "#FF5C1A", color: "white", fontWeight: 800, fontSize: "22px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  profileInfo: { display: "flex", flexDirection: "column", gap: "2px" },
-  name: { fontSize: "16px", fontWeight: 700, margin: 0 },
-  detail: { fontSize: "13px", color: "#666", margin: 0 },
-  slotRow: { display: "flex", gap: "8px", flexWrap: "wrap" },
-  paymentBadge: { fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "20px", alignSelf: "flex-start" },
-  qrToggle: { background: "none", border: "1px solid #eee", borderRadius: "8px", padding: "8px 14px", fontSize: "13px", fontWeight: 600, color: "#FF5C1A", cursor: "pointer", textAlign: "center" },
-  qrSection: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", padding: "8px 0" },
-  qrImg: { width: "180px", height: "180px", borderRadius: "8px", border: "1px solid #eee" },
-  downloadBtn: { display: "inline-block", padding: "8px 20px", background: "#FF5C1A", color: "white", borderRadius: "8px", fontSize: "13px", fontWeight: 700, textDecoration: "none", textAlign: "center" },
-  ticketId: { fontSize: "10px", color: "#bbb", fontFamily: "monospace", margin: 0 },
-  emptyState: { textAlign: "center", padding: "48px 20px", background: "#fafafa", borderRadius: "12px", border: "2px dashed #eee", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" },
-  emptyIcon: { fontSize: "36px" },
-  emptyText: { color: "#aaa", fontSize: "14px", margin: 0 },
-  bookBtn: { marginTop: "4px", padding: "10px 20px", background: "#FF5C1A", color: "white", border: "none", borderRadius: "8px", fontWeight: 700, fontSize: "14px", cursor: "pointer" },
-  errorBox: { background: "#fff0f0", border: "1px solid #fdd", color: "#d0312d", fontSize: "13px", padding: "8px 12px", borderRadius: "7px", marginBottom: "14px" },
-};

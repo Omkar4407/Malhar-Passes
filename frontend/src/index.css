@@ -1,3 +1,41 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --background: 260 60% 5%;
+  --foreground: 280 100% 95%;
+  --card: 270 40% 12%;
+  --card-foreground: 280 100% 95%;
+  --primary: 312 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --border: 280 20% 25%;
+}
+
+body {
+  background-color: #0b011c;
+  color: #eedcff;
+  margin: 0;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.glass-morphism {
+  background: rgba(26, 13, 43, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 173, 223, 0.08);
+}
+
+.glass-card {
+  background: rgba(38, 25, 56, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 173, 223, 0.1);
+  border-radius: 1rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 0, 207, 0.2);
+  box-shadow: 0 0 25px rgba(255, 0, 207, 0.08);
+}

@@ -1,6 +1,7 @@
 import { signToken, verifyToken } from "../services/jwt.service.js";
 import adminSupabase from "../services/supabase.service.js";
 
+
 export async function adminLogin(req, res) {
   const { email, password } = req.body;
   if (!password || !email) return res.status(400).json({ error: "Email and password are required." });
@@ -51,5 +52,28 @@ export async function verifyTokenHandler(req, res) {
     return res.json({ valid: true, payload });
   } catch {
     return res.status(401).json({ valid: false });
+  }
+}
+
+export async function supabaseLogin(req, res) {
+  const { access_token } = req.body;
+  if (!access_token) return res.status(400).json({ error: "Missing token." });
+
+  try {
+    const { data, error } = await adminSupabase.auth.getUser(access_token);
+    if (error || !data.user) {
+      return res.status(401).json({ error: "Invalid Supabase token." });
+    }
+
+    const email = data.user.email;
+    const name = data.user.user_metadata?.full_name || email.split("@")[0];
+
+    // Issue standard userToken for frontend
+    const token = signToken({ role: "student", email, name, sub: data.user.id });
+
+    return res.json({ success: true, token, user: { email, name } });
+  } catch (err) {
+    console.error("Supabase Auth Error:", err);
+    return res.status(401).json({ error: "Internal Error" });
   }
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { ShieldAlert, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -19,10 +20,6 @@ export default function AdminLogin() {
     setLoading(true);
     setError("");
 
-    // Email + password both sent to backend. Backend verifies password AND
-    // checks the email against admins table before issuing the JWT.
-    // This fixes the race condition where a token was issued before the
-    // client-side DB check — the token is now ONLY issued if the email is valid.
     try {
       const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin-login`, {
         email: email.trim().toLowerCase(),
@@ -40,162 +37,92 @@ export default function AdminLogin() {
   };
 
   return (
-    <div style={styles.page}>
-      {/* ── Hero ── */}
-      <div style={styles.hero}>
-        <div style={styles.badge}>Admin</div>
-        <h1 style={styles.title}>Admin Login</h1>
-        <p style={styles.subtitle}>Restricted access. Authorised personnel only.</p>
-      </div>
+    <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat'] relative overflow-hidden flex flex-col items-center justify-center p-6">
+      
+      {/* Ambient Glow */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#ff6b00] rounded-full blur-[180px] opacity-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#ff00cf] rounded-full blur-[150px] opacity-10 pointer-events-none -translate-x-1/3 translate-y-1/3" />
 
-      {/* ── Form ── */}
-      <div style={styles.card}>
-        {error && <div style={styles.errorBox}>{error}</div>}
-
-        <label style={styles.label} htmlFor="admin-email">Email Address</label>
-        <input
-          id="admin-email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
-          onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-          style={styles.input}
-          autoComplete="email"
-          autoFocus
-        />
-
-        <label style={styles.label} htmlFor="admin-password">Password</label>
-        <div style={styles.inputWrapper}>
-          <input
-            id="admin-password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            style={{ ...styles.input, marginBottom: 0, paddingRight: "40px" }}
-          />
-          <button
-            onClick={() => setShowPassword((v) => !v)}
-            style={styles.eyeBtn}
-            tabIndex={-1}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-          >
-            {showPassword ? "🙈" : "👁️"}
-          </button>
+      <div className="w-full max-w-md relative z-10 space-y-6">
+        
+        {/* Hero Banner */}
+        <div className="glass-card p-8 border-b-0 rounded-b-none relative overflow-hidden text-center bg-gradient-to-br from-[#1a0d2b] to-[#140725]">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff00cf] via-[#ff6b00] to-[#ff00cf]" />
+          
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-[#ff6b00]/10 border border-[#ff6b00]/30 flex items-center justify-center shadow-[0_0_20px_rgba(255,107,0,0.2)] mb-4">
+            <ShieldAlert size={32} className="text-[#ff6b00]" />
+          </div>
+          
+          <div className="inline-block bg-[#ff6b00]/20 text-[#ff6b00] text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border border-[#ff6b00]/30 mb-3">
+            System Control
+          </div>
+          <h1 className="text-4xl font-black text-[#eedcff] tracking-wide font-['Bebas_Neue']">
+            Admin Panel
+          </h1>
         </div>
 
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          style={{ ...styles.btn, marginTop: "16px", opacity: loading ? 0.7 : 1 }}
-        >
-          {loading ? "Checking…" : "Login"}
-        </button>
+        {/* Form Card */}
+        <div className="glass-card p-8 border-t-0 rounded-t-none space-y-6 -mt-6 pt-6">
+          
+          {error && (
+            <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm font-medium text-center">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-5">
+            <div>
+              <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block mb-2" htmlFor="admin-email">Email Address</label>
+              <input
+                id="admin-email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 text-[#eedcff] placeholder:text-[#a78899]/40 focus:outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]/50 transition-all font-medium"
+                autoComplete="email"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block mb-2" htmlFor="admin-password">Password</label>
+              <div className="relative">
+                <input
+                  id="admin-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                  className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 pr-12 text-[#eedcff] placeholder:text-[#a78899]/40 focus:outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]/50 transition-all font-medium"
+                />
+                <button
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a78899] hover:text-[#eedcff] transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className="w-full mt-2 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-[#ff6b00] to-[#ff00cf] text-white shadow-[0_0_20px_rgba(255,107,0,0.3)] hover:shadow-[0_0_30px_rgba(255,107,0,0.5)] disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 size={20} className="animate-spin" /> : "Access Dashboard"} 
+              {!loading && <ArrowRight size={20} />}
+            </button>
+          </div>
+        </div>
+
+        <p className="text-center text-[#a78899]/40 text-[10px] uppercase tracking-[0.2em] font-bold">
+          High Security Area
+        </p>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    padding: "24px 20px",
-    maxWidth: "420px",
-    margin: "0 auto",
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-    color: "#1a1a1a",
-  },
-  hero: {
-    background: "#1A0A00",
-    borderRadius: "16px",
-    padding: "28px 24px",
-    marginBottom: "16px",
-  },
-  badge: {
-    display: "inline-block",
-    background: "rgba(255,92,26,0.2)",
-    color: "#FF5C1A",
-    fontSize: "11px",
-    fontWeight: 700,
-    letterSpacing: "0.1em",
-    textTransform: "uppercase",
-    padding: "3px 10px",
-    borderRadius: "20px",
-    border: "1px solid rgba(255,92,26,0.35)",
-    marginBottom: "10px",
-  },
-  title: {
-    color: "#FF5C1A",
-    fontSize: "28px",
-    fontWeight: 800,
-    margin: "0 0 6px 0",
-    letterSpacing: "-0.02em",
-  },
-  subtitle: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: "13px",
-    margin: 0,
-  },
-  card: {
-    background: "#fff",
-    padding: "20px",
-    borderRadius: "12px",
-    border: "1px solid #eee",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-  },
-  label: {
-    display: "block",
-    fontSize: "12px",
-    fontWeight: 700,
-    color: "#555",
-    marginBottom: "6px",
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-  },
-  input: {
-    width: "100%",
-    padding: "10px 12px",
-    marginBottom: "14px",
-    borderRadius: "8px",
-    border: "1px solid #ddd",
-    fontSize: "14px",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  inputWrapper: {
-    position: "relative",
-  },
-  eyeBtn: {
-    position: "absolute",
-    right: "10px",
-    top: "50%",
-    transform: "translateY(-50%)",
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-    fontSize: "16px",
-    padding: 0,
-    lineHeight: 1,
-  },
-  btn: {
-    width: "100%",
-    padding: "12px",
-    background: "#FF5C1A",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    fontWeight: 700,
-    fontSize: "15px",
-    cursor: "pointer",
-  },
-  errorBox: {
-    background: "#fff0f0",
-    border: "1px solid #fdd",
-    color: "#d0312d",
-    fontSize: "13px",
-    padding: "8px 12px",
-    borderRadius: "7px",
-    marginBottom: "14px",
-  },
-};

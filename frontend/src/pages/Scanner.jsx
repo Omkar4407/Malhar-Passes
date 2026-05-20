@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import Menu from "../components/Menu";
 import { Html5Qrcode } from "html5-qrcode";
 
 const API = import.meta.env.VITE_BACKEND_URL;
@@ -166,7 +165,6 @@ export default function Scanner() {
 
   return (
     <>
-      <Menu />
       <div style={styles.page}>
         <h2 style={styles.heading}>Scanner</h2>
 

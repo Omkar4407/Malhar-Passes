@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import Menu from "../components/Menu";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
@@ -266,7 +265,6 @@ export default function AdminEvents() {
 
   return (
     <>
-      <Menu />
       <div style={styles.page}>
         <h1 style={styles.pageTitle}>Admin Panel</h1>
 

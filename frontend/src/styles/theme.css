@@ -1,13 +1,215 @@
+/* ═══════════════════════════════════════════════════════════
+   MALHAR PASSES — "Vivid Pulsar" Design System
+   Based on Stitch Neon M-Ticketing Portal
+   Colors: Black bg, Pink/Purple primary, Blue/Orange highlights
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+
 :root {
-  --orange: #FF5C1A;
-  --orange-dark: #CC3D00;
-  --cream: #FFF8F0;
-  --ink: #1A0A00;
-  --ink-light: #5C3D28;
-  --border: rgba(90,40,10,0.12);
+  /* ── Core Background ── */
+  --bg-deep:          #0b011c;
+  --bg-surface:       #1a0d2b;
+  --bg-card:          #261938;
+  --bg-card-high:     #312443;
+  --bg-card-highest:  #3c2e4e;
+
+  /* ── Primary Pink/Magenta ── */
+  --primary:          #ff00cf;
+  --primary-light:    #ffaddf;
+  --primary-container:#ff33d0;
+  --primary-dim:      #c75acc;
+  --primary-glow:     rgba(255, 0, 207, 0.35);
+
+  /* ── Secondary Purple ── */
+  --secondary:        #6f24bb;
+  --secondary-light:  #dab8ff;
+  --secondary-container: #6411b0;
+  --secondary-dim:    #5300a6;
+
+  /* ── Tertiary Blue ── */
+  --tertiary:         #00abff;
+  --tertiary-light:   #92ccff;
+  --tertiary-container:#0098e4;
+  --tertiary-dim:     #003686;
+
+  /* ── Accent Orange ── */
+  --accent-orange:    #ff6b00;
+  --accent-orange-glow: rgba(255, 107, 0, 0.3);
+
+  /* ── Accent Hot Pink ── */
+  --accent-pink:      #ff0091;
+  --accent-pink-light:#ff42ae;
+
+  /* ── Text ── */
+  --text-primary:     #eedcff;
+  --text-secondary:   rgba(238, 220, 255, 0.6);
+  --text-muted:       rgba(238, 220, 255, 0.35);
+  --text-on-primary:  #fff;
+
+  /* ── Borders & Surfaces ── */
+  --border:           rgba(167, 136, 153, 0.25);
+  --border-glow:      rgba(255, 0, 207, 0.2);
+  --outline:          #a78899;
+
+  /* ── Status Colors ── */
+  --success:          #16a34a;
+  --success-bg:       rgba(22, 163, 74, 0.12);
+  --error:            #ffb4ab;
+  --error-bg:         rgba(147, 0, 10, 0.2);
+  --warning:          #f59e0b;
+  --warning-bg:       rgba(245, 158, 11, 0.12);
+
+  /* ── Spacing ── */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+
+  /* ── Radii ── */
+  --radius-sm:  0.5rem;
+  --radius-md:  0.75rem;
+  --radius-lg:  1rem;
+  --radius-xl:  1.5rem;
+  --radius-full:9999px;
+
+  /* ── Fonts ── */
+  --font-headline: 'Bebas Neue', sans-serif;
+  --font-body:     'Montserrat', sans-serif;
+}
+
+/* ── Base ── */
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--cream);
-  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--secondary-dim);
+  border-radius: 3px;
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--primary);
+  color: var(--bg-deep);
+}
+
+/* ── Glassmorphism Utilities ── */
+.glass-morphism {
+  background: rgba(26, 13, 43, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 173, 223, 0.08);
+}
+
+.glass-card {
+  background: rgba(38, 25, 56, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 173, 223, 0.1);
+  border-radius: var(--radius-lg);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 0, 207, 0.2);
+  box-shadow: 0 0 25px rgba(255, 0, 207, 0.08);
+}
+
+/* ── Glow Effects ── */
+.glow-pink {
+  box-shadow: 0 0 20px var(--primary-glow), 0 0 60px rgba(255, 0, 207, 0.1);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px rgba(0, 171, 255, 0.3), 0 0 60px rgba(0, 171, 255, 0.1);
+}
+
+.glow-orange {
+  box-shadow: 0 0 20px var(--accent-orange-glow), 0 0 60px rgba(255, 107, 0, 0.1);
+}
+
+/* ── Gradient Borders ── */
+.gradient-border {
+  position: relative;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary), var(--tertiary));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Animations ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px var(--primary-glow); }
+  50% { box-shadow: 0 0 40px var(--primary-glow), 0 0 80px rgba(255, 0, 207, 0.15); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,173,223,0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
 }

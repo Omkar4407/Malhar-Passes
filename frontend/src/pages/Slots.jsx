@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
-import Menu from "../components/Menu";
 import Header from "../components/Header";
+import { RefreshCw, Clock, Calendar, ChevronRight, Lock, Users } from "lucide-react";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
@@ -51,14 +51,12 @@ export default function Slots() {
         setSlots(fresh);
         saveToSession(initEvent, fresh);
       } catch (err) {
-        console.error("Initial slots fetch error:", err);
         if (!initSlots) setLoadError("Failed to load slots. Please go back and try again.");
       } finally {
         setRefreshing(false);
       }
     };
     fetchSlots();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -67,23 +65,33 @@ export default function Slots() {
 
   if (!event) {
     return (
-      <>
-        <Menu />
-        <div style={styles.page}>
-          <div style={styles.errorBox}>Invalid page state. Please go back and try again.</div>
+      <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat']">
+        <Header />
+        <div className="max-w-md mx-auto p-6 pt-24 text-center">
+          <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl">
+            Invalid page state. Please go back and try again.
+          </div>
+          <button onClick={() => navigate("/events")} className="mt-6 text-[#ff00cf] hover:underline">
+            ← Back to Events
+          </button>
         </div>
-      </>
+      </div>
     );
   }
 
   if (loadError && !slots) {
     return (
-      <>
-        <Menu />
-        <div style={styles.page}>
-          <div style={styles.errorBox}>{loadError}</div>
+      <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat']">
+        <Header />
+        <div className="max-w-md mx-auto p-6 pt-24 text-center">
+          <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl">
+            {loadError}
+          </div>
+          <button onClick={() => navigate("/events")} className="mt-6 text-[#ff00cf] hover:underline">
+            ← Back to Events
+          </button>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -114,7 +122,7 @@ export default function Slots() {
       );
       if (!check.allowed) {
         if (check.reason === "DUPLICATE_TICKET") {
-          setCheckError("You already have a ticket for this slot. You can book a different slot for this event.");
+          setCheckError("You already have a ticket for this slot.");
         } else if (check.reason === "SLOT_FULL") {
           setCheckError("This slot is sold out. Please pick another.");
         } else {
@@ -123,126 +131,149 @@ export default function Slots() {
         setCheckingSlot(null);
         return;
       }
-    } catch {
-      // If not logged in or check fails, let booking page handle auth
-    }
+    } catch {}
     setCheckingSlot(null);
     navigate("/booking", { state: { slot, event } });
   };
 
   return (
-    <>
-      <Menu />
+    <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat'] relative overflow-x-hidden pb-20">
       <Header />
-      <div style={styles.page}>
-        <div style={styles.hero}>
-          <p style={styles.heroLabel}>Select a slot for</p>
-          <h1 style={styles.heroTitle}>{event.name}</h1>
-          <span style={{
-            ...styles.priceBadge,
-            background: event.price > 0 ? "rgba(255,92,26,0.15)" : "rgba(22,163,74,0.15)",
-            color:      event.price > 0 ? "#FF5C1A" : "#16a34a",
-            border:     `1px solid ${event.price > 0 ? "rgba(255,92,26,0.3)" : "rgba(22,163,74,0.3)"}`,
-          }}>
-            {event.price > 0 ? `₹${event.price}` : "Free"}
-          </span>
+
+      {/* Ambient Glow */}
+      <div className="absolute top-[10%] right-[-10%] w-[400px] h-[400px] bg-[#6f24bb] rounded-full blur-[150px] opacity-10 pointer-events-none" />
+
+      <div className="relative z-10 max-w-xl mx-auto px-5 py-8 space-y-6">
+        
+        {/* Header Hero */}
+        <div className="glass-card p-6 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#00abff]/10 to-transparent opacity-50" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#00abff] shadow-[0_0_15px_#00abff]" />
+          
+          <div className="relative z-10">
+            <p className="text-[10px] font-bold text-[#92ccff] uppercase tracking-[0.2em] mb-2">Select a slot for</p>
+            <h1 className="text-4xl md:text-5xl font-black text-[#eedcff] mb-4 tracking-wide" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+              {event.name}
+            </h1>
+            
+            <div className={`inline-flex items-center px-4 py-1.5 rounded-xl border font-bold text-sm shadow-[0_0_15px_currentColor] ${
+              event.price > 0 
+                ? "bg-[#ff6b00]/10 border-[#ff6b00]/30 text-[#ff6b00]" 
+                : "bg-[#00abff]/10 border-[#00abff]/30 text-[#00abff]"
+            }`}>
+              {event.price > 0 ? `₹${event.price}` : "FREE ENTRY"}
+            </div>
+          </div>
         </div>
 
-        <div style={styles.controlRow}>
-          <span style={styles.slotCount}>
-            {slots.length} slot{slots.length !== 1 ? "s" : ""}
+        <div className="flex justify-between items-center px-1">
+          <span className="text-[#a78899] text-sm font-semibold tracking-wide">
+            {slots.length} available slot{slots.length !== 1 ? "s" : ""}
           </span>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            style={{ ...styles.refreshBtn, opacity: refreshing ? 0.6 : 1 }}
+            className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg border transition-all ${
+              refreshing 
+                ? "bg-[#261938] border-[#a78899]/20 text-[#a78899] cursor-not-allowed" 
+                : "bg-[#00abff]/10 border-[#00abff]/30 text-[#00abff] hover:bg-[#00abff]/20 hover:shadow-[0_0_15px_rgba(0,171,255,0.2)]"
+            }`}
           >
-            {refreshing ? "↻ Refreshing…" : "↻ Refresh"}
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
         {checkError && (
-          <div style={{ ...styles.errorBox, marginBottom: "12px" }}>{checkError}</div>
-        )}
-
-        {slots.length === 0 && (
-          <div style={styles.emptyBox}>
-            No slots available. Try refreshing.
+          <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm font-medium flex items-start gap-3">
+            <span>⚠️</span>
+            <p className="leading-snug pt-0.5">{checkError}</p>
           </div>
         )}
 
-        {slots.map((slot) => {
-          const isReleased = slot.is_released === true;
-          const isFull     = (slot.booked_count ?? 0) >= slot.capacity;
-          const canBook    = isReleased && !isFull;
-          const spotsLeft  = slot.capacity - (slot.booked_count ?? 0);
+        {slots.length === 0 && (
+          <div className="glass-card p-12 text-center border-dashed border-[#a78899]/30">
+            <p className="text-[#a78899] font-medium">No slots currently available.</p>
+          </div>
+        )}
 
-          return (
-            <div
-              key={slot.id}
-              onClick={() => canBook && !checkingSlot && handleSelect(slot)}
-              style={{
-                ...styles.slotCard,
-                opacity: canBook && !checkingSlot ? 1 : 0.72,
-                cursor:  canBook && !checkingSlot ? "pointer" : "default",
-              }}
-            >
-              <div style={styles.slotLeft}>
-                <h3 style={styles.slotName}>{slot.name}</h3>
-                <div style={styles.slotMeta}>
-                  {slot.date && <span style={styles.metaChip}>📅 {slot.date}</span>}
-                  {slot.time && <span style={styles.metaChip}>🕐 {slot.time}</span>}
-                </div>
-              </div>
+        <div className="space-y-4">
+          {slots.map((slot) => {
+            const isReleased = slot.is_released === true;
+            const isFull     = (slot.booked_count ?? 0) >= slot.capacity;
+            const canBook    = isReleased && !isFull;
+            const spotsLeft  = slot.capacity - (slot.booked_count ?? 0);
 
-              <div style={styles.slotRight}>
-                {!isReleased ? (
-                  <span style={styles.lockedBadge}>Passes not released yet</span>
-                ) : isFull ? (
-                  <span style={{ ...styles.availBadge, background: "#f5f5f5", color: "#aaa" }}>
-                    Full
-                  </span>
-                ) : (
-                  <span style={{
-                    ...styles.availBadge,
-                    background: spotsLeft <= 10 ? "#FFF3E0" : "#E6FFF2",
-                    color:      spotsLeft <= 10 ? "#b45309" : "#1a7a45",
-                  }}>
-                    {spotsLeft} left
-                  </span>
-                )}
+            return (
+              <button
+                key={slot.id}
+                onClick={() => canBook && !checkingSlot && handleSelect(slot)}
+                disabled={!canBook || checkingSlot}
+                className={`w-full text-left p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden group ${
+                  canBook
+                    ? "bg-[#261938]/80 border-[#a78899]/20 hover:border-[#ff00cf]/50 hover:bg-[#312443]/90 hover:shadow-[0_5px_30px_rgba(255,0,207,0.1)] cursor-pointer"
+                    : "bg-[#140725]/50 border-[#a78899]/10 opacity-70 cursor-not-allowed"
+                }`}
+              >
                 {canBook && (
-                  <span style={styles.arrow}>
-                    {checkingSlot === slot.id ? "…" : "→"}
-                  </span>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#ff00cf] rounded-full blur-[60px] opacity-0 group-hover:opacity-10 transition-opacity duration-500 pointer-events-none" />
                 )}
-              </div>
-            </div>
-          );
-        })}
+
+                <div className="flex justify-between items-center relative z-10">
+                  <div className="flex-1 min-w-0 pr-4">
+                    <h3 className="text-xl font-bold text-[#eedcff] mb-3 truncate font-['Montserrat']">
+                      {slot.name}
+                    </h3>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      {slot.date && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0b011c]/60 text-[#dab8ff] text-xs font-semibold border border-[#a78899]/10">
+                          <Calendar size={12} className="text-[#00abff]" /> {slot.date}
+                        </div>
+                      )}
+                      {slot.time && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0b011c]/60 text-[#dab8ff] text-xs font-semibold border border-[#a78899]/10">
+                          <Clock size={12} className="text-[#ff6b00]" /> {slot.time}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                    {!isReleased ? (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f59e0b]/10 border border-[#f59e0b]/20 text-[#f59e0b] text-[10px] font-bold uppercase tracking-wider">
+                        <Lock size={12} /> Not Released
+                      </span>
+                    ) : isFull ? (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#a78899]/10 border border-[#a78899]/20 text-[#a78899] text-[10px] font-bold uppercase tracking-wider">
+                        <Users size={12} /> Sold Out
+                      </span>
+                    ) : (
+                      <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider ${
+                        spotsLeft <= 10 
+                          ? "bg-[#ff6b00]/10 border-[#ff6b00]/30 text-[#ff6b00]" 
+                          : "bg-[#16a34a]/10 border-[#16a34a]/30 text-[#16a34a]"
+                      }`}>
+                        <Users size={12} /> {spotsLeft} left
+                      </span>
+                    )}
+
+                    {canBook && (
+                      <div className="w-8 h-8 rounded-full bg-[#ff00cf]/10 border border-[#ff00cf]/30 flex items-center justify-center text-[#ffaddf] group-hover:bg-[#ff00cf] group-hover:text-white transition-colors shadow-[0_0_10px_rgba(255,0,207,0.2)]">
+                        {checkingSlot === slot.id ? (
+                          <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <ChevronRight size={16} strokeWidth={3} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
-
-const styles = {
-  page:        { padding: "20px", maxWidth: "560px", margin: "0 auto", fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#1a1a1a" },
-  hero:        { background: "#1A0A00", borderRadius: "14px", padding: "24px 20px", marginBottom: "16px" },
-  heroLabel:   { color: "rgba(255,255,255,0.4)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" },
-  heroTitle:   { color: "#FF5C1A", fontSize: "26px", fontWeight: 900, margin: "0 0 10px", letterSpacing: "-0.02em" },
-  priceBadge:  { display: "inline-block", padding: "3px 12px", borderRadius: "20px", fontSize: "13px", fontWeight: 700 },
-  controlRow:  { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" },
-  slotCount:   { fontSize: "13px", color: "#aaa", fontWeight: 500 },
-  refreshBtn:  { background: "none", border: "1px solid #FF5C1A", color: "#FF5C1A", borderRadius: "8px", padding: "5px 12px", fontSize: "13px", fontWeight: 600, cursor: "pointer" },
-  slotCard:    { background: "#fff", border: "1px solid #eee", borderRadius: "12px", padding: "16px 18px", marginBottom: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", transition: "opacity 0.15s" },
-  slotLeft:    { flex: 1, minWidth: 0 },
-  slotName:    { fontSize: "16px", fontWeight: 700, margin: "0 0 6px" },
-  slotMeta:    { display: "flex", gap: "8px", flexWrap: "wrap" },
-  metaChip:    { fontSize: "12px", color: "#666", background: "#f5f5f5", padding: "2px 8px", borderRadius: "6px" },
-  slotRight:   { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 },
-  availBadge:  { fontSize: "12px", fontWeight: 700, padding: "3px 10px", borderRadius: "20px" },
-  lockedBadge: { fontSize: "11px", fontWeight: 700, padding: "4px 10px", borderRadius: "20px", background: "#FFF3E0", color: "#b45309", border: "1px solid rgba(180,83,9,0.2)", whiteSpace: "nowrap" },
-  arrow:       { fontSize: "18px", color: "#FF5C1A" },
-  errorBox:    { background: "#fff0f0", border: "1px solid #fdd", color: "#d0312d", fontSize: "13px", padding: "10px 14px", borderRadius: "8px" },
-  emptyBox:    { background: "#fafafa", border: "2px dashed #eee", color: "#aaa", fontSize: "14px", padding: "24px", borderRadius: "12px", textAlign: "center" },
-};

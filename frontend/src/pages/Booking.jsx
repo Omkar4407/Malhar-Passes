@@ -2,9 +2,9 @@ import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import Menu from "../components/Menu";
 import { bustSlotsCache } from "./Events";
 import { bustTicketsCache } from "./Ticket";
+import { ImagePlus, X, CreditCard, Ticket as TicketIcon, Loader2 } from "lucide-react";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -44,14 +44,16 @@ export default function Booking() {
 
   if (!slot || !event) {
     return (
-      <>
-        <Menu />
-        <div style={styles.page}>
-          <div style={styles.errorBox}>
+      <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat']">
+        <div className="max-w-md mx-auto p-6 pt-24 text-center">
+          <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl">
             Invalid booking session. Please go back and select an event.
           </div>
+          <button onClick={() => navigate("/events")} className="mt-6 text-[#ff00cf] hover:underline">
+            ← Back to Events
+          </button>
         </div>
-      </>
+      </div>
     );
   }
 
@@ -107,7 +109,6 @@ export default function Booking() {
     }
   };
 
-  // ── Free booking ───────────────────────────────────────────────────────────
   const handleBooking = async () => {
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
@@ -139,7 +140,6 @@ export default function Booking() {
     }
   };
 
-  // ── Paid booking via Cashfree ──────────────────────────────────────────────
   const handlePayment = async () => {
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
@@ -147,14 +147,12 @@ export default function Booking() {
     setLoading(true);
     setError("");
     try {
-      // Step 1 — create order on backend, get payment_session_id
       const { data: order } = await axios.post(
         `${API}/create-order`,
         { amount: event.price, slot_id: slot.id, event_id: event.id },
         { headers: authHeader() }
       );
 
-      // Step 2 — load Cashfree SDK and open checkout
       const cashfree = await loadCashfreeSDK();
       const cf = cashfree({ mode: import.meta.env.VITE_CASHFREE_ENV || "production" });
 
@@ -169,7 +167,6 @@ export default function Booking() {
         }
 
         if (result.paymentDetails || result.redirect) {
-          // Step 3 — verify payment on backend
           try {
             const verify = await axios.post(
               `${API}/verify-payment`,
@@ -193,21 +190,18 @@ export default function Booking() {
               setLoading(false);
             }
           } catch (err) {
-            const msg = err.response?.data?.error;
             if (err.response?.status === 409) {
               setError("Slot sold out after payment. Please contact support for a refund.");
             } else {
-              setError(msg || "Payment verification failed. Please contact support.");
+              setError(err.response?.data?.error || "Payment verification failed. Please contact support.");
             }
             setLoading(false);
           }
         } else {
-          // User closed the modal
           setLoading(false);
         }
       });
     } catch (err) {
-      const msg = err.response?.data?.error;
       if (err.response?.status === 409) {
         if (err.response?.data?.code === "DUPLICATE_TICKET") {
           setError("You already have a ticket for this slot. You can book a different slot for this event.");
@@ -215,7 +209,7 @@ export default function Booking() {
           setError("This slot just sold out. Please go back and pick another.");
         }
       } else {
-        setError(msg || "Could not initiate payment. Please try again.");
+        setError(err.response?.data?.error || "Could not initiate payment. Please try again.");
       }
       setLoading(false);
     }
@@ -225,241 +219,149 @@ export default function Booking() {
   const isFormReady  = name.trim() && college.trim() && isPhotoReady;
 
   return (
-    <>
-      <Menu />
-      <div style={styles.page}>
-        <div style={styles.hero}>
-          <div style={styles.badge}>Booking</div>
-          <h1 style={styles.title}>Book Your Pass</h1>
-          <p style={styles.eventName}>{event.name}</p>
-          <div style={styles.slotPill}>
-            🕐 {slot.name}{slot.time ? ` — ${slot.time}` : ""}
+    <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat'] relative overflow-x-hidden pb-20">
+      
+      {/* Background Orbs */}
+      <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#ff00cf] rounded-full blur-[150px] opacity-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
+      <div className="absolute top-[40%] left-0 w-[300px] h-[300px] bg-[#6f24bb] rounded-full blur-[100px] opacity-10 pointer-events-none -translate-x-1/2" />
+
+      <div className="relative z-10 max-w-md mx-auto px-5 pt-20 space-y-6">
+        
+        {/* Header Hero */}
+        <div className="glass-card p-6 overflow-hidden relative group">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#ff00cf]/10 to-transparent opacity-50" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#ff00cf] shadow-[0_0_15px_#ff00cf]" />
+          
+          <div className="relative z-10">
+            <span className="inline-block px-3 py-1 rounded-full border border-[#ffaddf]/30 bg-[#ffaddf]/10 text-[#ffaddf] text-[10px] font-bold uppercase tracking-widest mb-3">
+              Booking
+            </span>
+            <h1 className="text-4xl font-black text-[#eedcff] mb-2 tracking-wide" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
+              Secure Your Pass
+            </h1>
+            <p className="text-[#a78899] font-medium mb-4">
+              {event.name}
+            </p>
+            <div className="inline-flex items-center gap-2 bg-[#140725] border border-[#ffaddf]/10 px-4 py-2 rounded-xl text-sm font-semibold text-[#dab8ff]">
+              <span>🕐</span>
+              {slot.name}{slot.time ? ` — ${slot.time}` : ""}
+            </div>
           </div>
         </div>
 
-        <div style={styles.card}>
-          {error && <div style={styles.errorBox}>{error}</div>}
+        {error && (
+          <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm flex items-start gap-3">
+            <span>⚠️</span>
+            <p className="leading-snug pt-0.5">{error}</p>
+          </div>
+        )}
 
-          <label style={styles.label} htmlFor="booking-name">Full Name *</label>
-          <input
-            id="booking-name"
-            placeholder="e.g. Omkar Sharma"
-            value={name}
-            onChange={(e) => { setName(e.target.value); if (error) setError(""); }}
-            style={styles.input}
-            maxLength={100}
-            autoFocus
-          />
+        {/* Form */}
+        <div className="glass-card p-6 space-y-5">
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block">Full Name *</label>
+            <input
+              type="text"
+              placeholder="e.g. Omkar Sharma"
+              value={name}
+              onChange={(e) => { setName(e.target.value); if (error) setError(""); }}
+              maxLength={100}
+              className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 text-[#eedcff] placeholder:text-[#a78899]/50 focus:outline-none focus:border-[#ff00cf] focus:ring-1 focus:ring-[#ff00cf]/50 transition-all font-medium"
+            />
+          </div>
 
-          <label style={styles.label} htmlFor="booking-college">College *</label>
-          <input
-            id="booking-college"
-            placeholder="e.g. St. Xavier's College"
-            value={college}
-            onChange={(e) => { setCollege(e.target.value); if (error) setError(""); }}
-            style={styles.input}
-            maxLength={150}
-          />
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block">College *</label>
+            <input
+              type="text"
+              placeholder="e.g. St. Xavier's College"
+              value={college}
+              onChange={(e) => { setCollege(e.target.value); if (error) setError(""); }}
+              maxLength={150}
+              className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 text-[#eedcff] placeholder:text-[#a78899]/50 focus:outline-none focus:border-[#ff00cf] focus:ring-1 focus:ring-[#ff00cf]/50 transition-all font-medium"
+            />
+          </div>
 
-          <label style={styles.label}>Photo *</label>
-          <label htmlFor="booking-photo" style={styles.fileLabel}>
-            {photoPreview ? (
-              <img src={photoPreview} alt="Preview" style={styles.photoPreview} />
-            ) : (
-              <div style={styles.filePlaceholder}>
-                <span style={styles.fileIcon}>📷</span>
-                <span style={styles.fileText}>Tap to select photo (JPEG/PNG/WebP, max 5MB)</span>
-              </div>
-            )}
-          </label>
-          <input
-            id="booking-photo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            capture="user"
-            onChange={handlePhotoChange}
-            style={{ display: "none" }}
-          />
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block">ID Photo *</label>
+            <div className="relative">
+              <input
+                id="booking-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="user"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+              
+              {photoPreview ? (
+                <div className="relative rounded-xl overflow-hidden border border-[#a78899]/30 group">
+                  <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover" />
+                  {!isPhotoReady && !uploading && (
+                    <button
+                      onClick={() => { setPhoto(null); setPhotoPreview(null); setPhotoUrl(null); }}
+                      className="absolute top-2 right-2 w-8 h-8 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white hover:bg-red-500/80 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                  {isPhotoReady && (
+                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-3 flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-[#16a34a] shadow-[0_0_8px_#16a34a]" />
+                      <span className="text-xs font-bold text-[#16a34a] uppercase tracking-wider">Uploaded</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <label 
+                  htmlFor="booking-photo" 
+                  className="flex flex-col items-center justify-center gap-3 w-full h-40 border-2 border-dashed border-[#a78899]/30 rounded-xl bg-[#140725]/50 hover:bg-[#140725] hover:border-[#ff00cf]/50 transition-all cursor-pointer group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#ff00cf]/10 flex items-center justify-center text-[#ffaddf] group-hover:scale-110 group-hover:bg-[#ff00cf]/20 transition-all">
+                    <ImagePlus size={24} />
+                  </div>
+                  <span className="text-sm font-medium text-[#a78899] group-hover:text-[#dab8ff] px-4 text-center">
+                    Tap to upload ID photo<br/>
+                    <span className="text-[10px] opacity-70 mt-1 block uppercase tracking-widest">Max 5MB • JPG/PNG/WEBP</span>
+                  </span>
+                </label>
+              )}
 
-          {photo && !isPhotoReady && (
-            <button
-              onClick={handleUploadPhoto}
-              disabled={uploading}
-              style={{ ...styles.uploadBtn, opacity: uploading ? 0.7 : 1 }}
-            >
-              {uploading ? "Uploading…" : "📤 Upload Photo"}
-            </button>
-          )}
-
-          {isPhotoReady && (
-            <div style={styles.uploadedBadge}>✅ Photo uploaded</div>
-          )}
-
-          {photoPreview && !isPhotoReady && !uploading && (
-            <button
-              onClick={() => { setPhoto(null); setPhotoPreview(null); setPhotoUrl(null); }}
-              style={styles.removePhoto}
-            >
-              Remove photo
-            </button>
-          )}
+              {photo && !isPhotoReady && (
+                <button
+                  onClick={handleUploadPhoto}
+                  disabled={uploading}
+                  className="w-full mt-3 py-3 rounded-xl font-bold text-sm bg-[#3c2e4e] text-white hover:bg-[#413353] transition-colors flex items-center justify-center gap-2"
+                >
+                  {uploading ? <Loader2 size={16} className="animate-spin" /> : "Confirm & Upload"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
+        {/* Action Button */}
         <button
-          style={{ ...styles.btn, opacity: loading || !isFormReady ? 0.6 : 1 }}
           disabled={loading || !isFormReady}
           onClick={event.price > 0 ? handlePayment : handleBooking}
+          className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
+            loading || !isFormReady
+              ? "bg-[#261938] text-[#a78899] cursor-not-allowed border border-[#a78899]/10"
+              : "bg-gradient-to-r from-[#ff00cf] to-[#6f24bb] text-white shadow-[0_0_20px_rgba(255,0,207,0.3)] hover:shadow-[0_0_30px_rgba(255,0,207,0.5)] hover:-translate-y-1"
+          }`}
         >
-          {loading
-            ? "Please wait…"
-            : !isPhotoReady
-            ? "Upload photo to continue"
-            : event.price > 0
-            ? `Pay ₹${event.price}`
-            : "Book Free Pass"}
+          {loading ? (
+            <><Loader2 size={20} className="animate-spin" /> Processing...</>
+          ) : !isPhotoReady ? (
+            "Upload photo to continue"
+          ) : event.price > 0 ? (
+            <><CreditCard size={20} /> Pay ₹{event.price}</>
+          ) : (
+            <><TicketIcon size={20} /> Book Free Pass</>
+          )}
         </button>
+
       </div>
-    </>
+    </div>
   );
 }
-
-const styles = {
-  page: {
-    padding: "24px 20px",
-    maxWidth: "480px",
-    margin: "0 auto",
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-    color: "#1a1a1a",
-  },
-  hero: {
-    background: "#1A0A00",
-    borderRadius: "16px",
-    padding: "28px 24px",
-    marginBottom: "16px",
-  },
-  badge: {
-    display: "inline-block",
-    background: "rgba(255,92,26,0.2)",
-    color: "#FF5C1A",
-    fontSize: "11px",
-    fontWeight: 700,
-    letterSpacing: "0.1em",
-    textTransform: "uppercase",
-    padding: "3px 10px",
-    borderRadius: "20px",
-    border: "1px solid rgba(255,92,26,0.35)",
-    marginBottom: "10px",
-  },
-  title: {
-    color: "#FF5C1A",
-    fontSize: "26px",
-    fontWeight: 800,
-    margin: "0 0 6px 0",
-    letterSpacing: "-0.02em",
-  },
-  eventName: { color: "rgba(255,255,255,0.75)", fontSize: "15px", margin: "0 0 10px 0" },
-  slotPill: {
-    display: "inline-block",
-    background: "rgba(255,255,255,0.08)",
-    color: "rgba(255,255,255,0.6)",
-    fontSize: "12px",
-    padding: "4px 10px",
-    borderRadius: "20px",
-    border: "1px solid rgba(255,255,255,0.12)",
-  },
-  card: {
-    background: "#fff",
-    padding: "20px",
-    borderRadius: "12px",
-    border: "1px solid #eee",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-    marginBottom: "0",
-  },
-  label: {
-    display: "block",
-    fontSize: "12px",
-    fontWeight: 700,
-    color: "#555",
-    marginBottom: "6px",
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-  },
-  input: {
-    width: "100%",
-    padding: "10px 12px",
-    marginBottom: "14px",
-    borderRadius: "8px",
-    border: "1px solid #ddd",
-    fontSize: "14px",
-    outline: "none",
-    boxSizing: "border-box",
-  },
-  fileLabel: { display: "block", cursor: "pointer", marginBottom: "8px" },
-  filePlaceholder: {
-    border: "2px dashed #ddd",
-    borderRadius: "10px",
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "8px",
-    background: "#fafafa",
-  },
-  fileIcon: { fontSize: "28px" },
-  fileText: { fontSize: "13px", color: "#aaa", textAlign: "center" },
-  photoPreview: {
-    width: "100%",
-    maxHeight: "200px",
-    objectFit: "cover",
-    borderRadius: "10px",
-    display: "block",
-  },
-  uploadBtn: {
-    width: "100%",
-    padding: "10px",
-    background: "#1A0A00",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "14px",
-    fontWeight: 700,
-    cursor: "pointer",
-    marginBottom: "6px",
-  },
-  uploadedBadge: {
-    fontSize: "13px",
-    color: "#16a34a",
-    fontWeight: 600,
-    padding: "6px 0",
-  },
-  removePhoto: {
-    background: "none",
-    border: "none",
-    color: "#d0312d",
-    fontSize: "12px",
-    cursor: "pointer",
-    padding: "0 0 12px 0",
-    textDecoration: "underline",
-  },
-  btn: {
-    width: "100%",
-    padding: "14px",
-    background: "#FF5C1A",
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    marginTop: "14px",
-    fontWeight: 700,
-    fontSize: "16px",
-    cursor: "pointer",
-  },
-  errorBox: {
-    background: "#fff0f0",
-    border: "1px solid #fdd",
-    color: "#d0312d",
-    fontSize: "13px",
-    padding: "8px 12px",
-    borderRadius: "7px",
-    marginBottom: "14px",
-  },
-};

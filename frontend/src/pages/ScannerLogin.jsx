@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import axios from "axios";
+import { Scan, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 
 export default function ScannerLogin() {
   const navigate = useNavigate();
@@ -21,10 +22,6 @@ export default function ScannerLogin() {
 
     setLoading(true);
 
-    // Email + password both sent to backend. Backend verifies password AND
-    // checks the email against admins table (role=admin) before issuing JWT.
-    // This fixes the previous race condition where the token was issued
-    // before the client-side email check.
     try {
       const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/scanner-login`, {
         email: email.trim().toLowerCase(),
@@ -47,203 +44,78 @@ export default function ScannerLogin() {
   };
 
   return (
-    <>
+    <div className="min-h-screen bg-[#0b011c] text-[#eedcff] font-['Montserrat'] relative overflow-hidden flex flex-col">
       <Header />
-      <div style={styles.page}>
 
-        {/* Card */}
-        <div style={styles.card}>
+      {/* Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#6f24bb] rounded-full blur-[150px] opacity-20 pointer-events-none" />
 
-          {/* Icon */}
-          <div style={styles.iconWrap}>
-            <span style={{ fontSize: "32px" }}>📷</span>
-          </div>
-
-          <h1 style={styles.title}>Scanner Access</h1>
-          <p style={styles.subtitle}>Admin credentials required</p>
-
-          {/* Error */}
-          {error && (
-            <div style={styles.errorBox}>
-              <span>⚠️</span> {error}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
+        
+        <div className="w-full max-w-md space-y-8">
+          {/* Logo Section */}
+          <div className="text-center space-y-3">
+            <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-[#ff00cf]/20 to-[#6f24bb]/20 border border-[#ff00cf]/30 flex items-center justify-center shadow-[0_0_30px_rgba(255,0,207,0.2)] mb-6">
+              <Scan size={36} className="text-[#ffaddf]" />
             </div>
-          )}
-
-          {/* Fields */}
-          <div style={styles.fields}>
-            <Field
-              label="Admin Email"
-              type="email"
-              placeholder="you@example.com"
-              value={form.email}
-              onChange={(v) => setForm({ ...form, email: v })}
-              onKeyDown={handleKey}
-            />
-            <Field
-              label="Password"
-              type="password"
-              placeholder="Enter scanner password"
-              value={form.password}
-              onChange={(v) => setForm({ ...form, password: v })}
-              onKeyDown={handleKey}
-            />
+            <h1 className="text-4xl font-black text-[#eedcff] tracking-wide font-['Bebas_Neue']">
+              Scanner Access
+            </h1>
+            <p className="text-[#a78899] font-medium text-sm">
+              Authorised personnel only
+            </p>
           </div>
 
-          {/* Submit */}
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            style={{ ...styles.btn, opacity: loading ? 0.7 : 1 }}
-          >
-            {loading ? "Verifying…" : "Access Scanner →"}
-          </button>
+          <div className="glass-card p-8">
+            {error && (
+              <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm flex items-start gap-3 mb-6">
+                <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
+                <p className="leading-snug">{error}</p>
+              </div>
+            )}
 
+            <div className="space-y-5">
+              <div>
+                <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block mb-2">Admin Email</label>
+                <input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onKeyDown={handleKey}
+                  className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 text-[#eedcff] placeholder:text-[#a78899]/40 focus:outline-none focus:border-[#ff00cf] focus:ring-1 focus:ring-[#ff00cf]/50 transition-all font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block mb-2">Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter scanner password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onKeyDown={handleKey}
+                  className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 text-[#eedcff] placeholder:text-[#a78899]/40 focus:outline-none focus:border-[#ff00cf] focus:ring-1 focus:ring-[#ff00cf]/50 transition-all font-medium"
+                />
+              </div>
+
+              <button
+                onClick={handleLogin}
+                disabled={loading}
+                className="w-full mt-2 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-[#ff00cf] to-[#6f24bb] text-white shadow-[0_0_20px_rgba(255,0,207,0.3)] hover:shadow-[0_0_30px_rgba(255,0,207,0.5)] disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? <Loader2 size={20} className="animate-spin" /> : "Authenticate"} 
+                {!loading && <ArrowRight size={20} />}
+              </button>
+            </div>
+          </div>
+
+          <p className="text-center text-[#a78899]/50 text-[10px] uppercase tracking-[0.2em] font-semibold">
+            🔒 Secure Connection
+          </p>
         </div>
 
-        <p style={styles.note}>
-          🔒 Only authorized admins can access the scanner.
-        </p>
       </div>
-    </>
-  );
-}
-
-// ── Reusable field ────────────────────────────────────────
-function Field({ label, type, placeholder, value, onChange, onKeyDown }) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <div style={styles.fieldWrap}>
-      <label style={styles.label}>{label}</label>
-      <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onKeyDown={onKeyDown}
-        style={{
-          ...styles.input,
-          borderColor: focused ? "#FF5C1A" : "#e0e0e0",
-          boxShadow: focused ? "0 0 0 3px rgba(255,92,26,0.12)" : "none",
-        }}
-      />
     </div>
   );
 }
-
-// ── Styles ────────────────────────────────────────────────
-const styles = {
-  page: {
-    minHeight: "calc(100vh - 70px)",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "24px 20px",
-    background: "#fafafa",
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-  },
-  card: {
-    background: "#fff",
-    borderRadius: "20px",
-    padding: "36px 32px",
-    width: "100%",
-    maxWidth: "400px",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
-    border: "1px solid #f0f0f0",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "8px",
-  },
-  iconWrap: {
-    width: "68px",
-    height: "68px",
-    borderRadius: "20px",
-    background: "#1A0A00",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: "4px",
-  },
-  title: {
-    fontSize: "22px",
-    fontWeight: 800,
-    color: "#1a1a1a",
-    margin: 0,
-    letterSpacing: "-0.02em",
-  },
-  subtitle: {
-    fontSize: "13px",
-    color: "#aaa",
-    margin: "0 0 8px",
-  },
-  errorBox: {
-    width: "100%",
-    background: "#fff0f0",
-    border: "1px solid #fdd",
-    color: "#d0312d",
-    fontSize: "13px",
-    fontWeight: 600,
-    padding: "10px 14px",
-    borderRadius: "10px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    boxSizing: "border-box",
-  },
-  fields: {
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    gap: "14px",
-    marginTop: "8px",
-  },
-  fieldWrap: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-    width: "100%",
-  },
-  label: {
-    fontSize: "12px",
-    fontWeight: 700,
-    color: "#555",
-    letterSpacing: "0.04em",
-    textTransform: "uppercase",
-  },
-  input: {
-    width: "100%",
-    padding: "11px 14px",
-    fontSize: "14px",
-    border: "1.5px solid #e0e0e0",
-    borderRadius: "10px",
-    outline: "none",
-    transition: "border-color 0.15s, box-shadow 0.15s",
-    boxSizing: "border-box",
-    color: "#1a1a1a",
-    background: "#fff",
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-  },
-  btn: {
-    width: "100%",
-    padding: "13px",
-    marginTop: "8px",
-    background: "#FF5C1A",
-    color: "#fff",
-    border: "none",
-    borderRadius: "12px",
-    fontSize: "15px",
-    fontWeight: 700,
-    cursor: "pointer",
-    letterSpacing: "0.02em",
-    transition: "opacity 0.15s",
-  },
-  note: {
-    marginTop: "20px",
-    fontSize: "12px",
-    color: "#bbb",
-    textAlign: "center",
-  },
-};
