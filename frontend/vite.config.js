@@ -8,5 +8,16 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     allowedHosts: true
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-qr': ['qrcode', 'html5-qrcode'],
+        }
+      }
+    }
   }
 })

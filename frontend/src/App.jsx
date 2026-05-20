@@ -14,7 +14,6 @@ import AdminEvents from "./pages/AdminEvents";
 import Account from "./pages/Account";
 import ScannerLogin from "./pages/ScannerLogin";
 
-console.log('ENV CHECK:', import.meta.env.VITE_BACKEND_URL)
 
 const API = import.meta.env.VITE_BACKEND_URL;
 

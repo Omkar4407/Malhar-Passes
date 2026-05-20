@@ -4,7 +4,6 @@ import axios from "axios";
 import Menu from "../components/Menu";
 
 const API = import.meta.env.VITE_BACKEND_URL;
-console.log('LOGIN API:', import.meta.env.VITE_BACKEND_URL);
 
 const sanitizePhone = (val) => val.replace(/\D/g, "").slice(0, 10);
 const sanitizeOtp   = (val) => val.replace(/\D/g, "").slice(0, 6);
