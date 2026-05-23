@@ -6,6 +6,7 @@ import {
   fetchTicketById,
   fetchTicketsByPhone,
 } from "../services/booking.service.js";
+import { validatePhotoUrl } from "../utils/bookingValidation.js";
 
 // ── GET /my-tickets ───────────────────────────────────────────────────────────
 // Returns all tickets for the authenticated user. Phone comes from the JWT
@@ -74,8 +75,12 @@ export async function verifyPayment(req, res) {
     if (!trimmedName || trimmedName.length > 100) {
       return res.status(400).json({ success: false, error: "Invalid name." });
     }
-    if (!trimmedCollege || trimmedCollege.length > 150) {
-      return res.status(400).json({ success: false, error: "Invalid college name." });
+    if (!trimmedCollege || trimmedCollege.length > 450) {
+      return res.status(400).json({ success: false, error: "Invalid booking details." });
+    }
+    const photoError = validatePhotoUrl(photo_url);
+    if (photoError) {
+      return res.status(400).json({ success: false, error: photoError });
     }
 
     const result = await bookSlot(slot_id, {
@@ -112,8 +117,12 @@ export async function bookFree(req, res) {
     if (name.trim().length > 100) {
       return res.status(400).json({ error: "Name must be 100 characters or fewer." });
     }
-    if (college.trim().length > 150) {
-      return res.status(400).json({ error: "College name must be 150 characters or fewer." });
+    if (college.trim().length > 450) {
+      return res.status(400).json({ error: "Booking details must be 450 characters or fewer." });
+    }
+    const photoError = validatePhotoUrl(photo_url);
+    if (photoError) {
+      return res.status(400).json({ error: photoError });
     }
 
     const result = await bookSlot(slot_id, {

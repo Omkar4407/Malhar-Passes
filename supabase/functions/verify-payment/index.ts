@@ -1,5 +1,6 @@
 import { handleCors, json, requireUserToken, authErrorJson } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
+import { validatePhotoUrl } from "../_shared/booking-validation.ts";
 
 const CF_APP_ID = Deno.env.get("CASHFREE_APP_ID")!;
 const CF_SECRET = Deno.env.get("CASHFREE_SECRET_KEY")!;
@@ -50,8 +51,11 @@ Deno.serve(async (req) => {
 
     if (!trimmedName || trimmedName.length > 100)
       return json(req, { success: false, error: "Invalid name." }, 400);
-    if (!trimmedCollege || trimmedCollege.length > 150)
-      return json(req, { success: false, error: "Invalid college name." }, 400);
+    if (!trimmedCollege || trimmedCollege.length > 450)
+      return json(req, { success: false, error: "Invalid booking details." }, 400);
+
+    const photoError = validatePhotoUrl(photo_url);
+    if (photoError) return json(req, { success: false, error: photoError }, 400);
 
     // Atomically book via book_slot() RPC
     const { data, error } = await adminSupabase.rpc("book_slot", {

@@ -7,8 +7,52 @@ import { bustSlotsCache } from "./Events";
 import { bustTicketsCache } from "./Ticket";
 
 const API = import.meta.env.VITE_BACKEND_URL;
-const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+const ALLOWED_EXT = /\.(jpe?g|png)$/i;
+const MAX_SIZE_BYTES = 250 * 1024;
+
+const TERMS_SECTIONS = [
+  {
+    title: "1. Right of Admission Reserved",
+    body: "Malhar reserves the sole and absolute right to admit or deny entry to any individual, without the obligation to provide a reason.",
+  },
+  {
+    title: "2. Agreement to Terms",
+    body: "By entering the premises or participating in Malhar events, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions.",
+  },
+  {
+    title: "3. Entry Requirements",
+    body: "A photograph is being taken at the time of registration for identification and verification purposes, without which entry won't be granted.",
+  },
+  {
+    title: "4. Use of Collected Information",
+    body: "The photograph will be used solely for identity verification, security, and admission management purposes. This data will be stored securely and handled in accordance with applicable data protection laws.",
+  },
+  {
+    title: "5. Consent",
+    body: "By agreeing to these Terms & Conditions, you explicitly consent to:",
+    bullets: [
+      "Your photograph being taken and stored.",
+      "The collection and processing of other details like full name, gender, date of birth and college related identification details.",
+    ],
+  },
+];
+
+function validatePhotoFile(file) {
+  if (!file) return "Please select a photo.";
+  const nameOk = ALLOWED_EXT.test(file.name);
+  const typeOk = !file.type || ALLOWED_TYPES.includes(file.type);
+  if (!nameOk || !typeOk) {
+    return "Only JPG or PNG images are allowed.";
+  }
+  if (file.size > MAX_SIZE_BYTES) {
+    return "Photo must be 250 KB or smaller.";
+  }
+  return null;
+}
+const COLLEGE_MAX_LEN = 450;
+const JC_STREAMS = ["Science", "Commerce", "Arts"];
+const GENDERS = ["Male", "Female", "Other", "Prefer not to say"];
 
 const sanitizePhone = (val) => val.replace(/\D/g, "").slice(0, 10);
 const sanitizeOtp = (val) => val.replace(/\D/g, "").slice(0, 6);
@@ -31,6 +75,104 @@ function loadCashfreeSDK() {
   });
 }
 
+function formatDob(isoDate) {
+  if (!isoDate) return "";
+  const [y, m, d] = isoDate.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function buildAcademicString({
+  xavieriteNa,
+  isXavierite,
+  xavierCollegeLevel,
+  rollGrNumber,
+  jcStream,
+  division,
+  institutionYearJc,
+  uid,
+  rollNumber,
+  degreeCourse,
+  yearDegree,
+  institutionName,
+  course,
+  institutionYear,
+}) {
+  if (xavieriteNa) return "External / Others (N/A)";
+  if (isXavierite && xavierCollegeLevel === "junior") {
+    return `Xavier's JC · Roll/GR: ${rollGrNumber.trim()} · ${jcStream} · Div ${division.trim()} · ${institutionYearJc}`;
+  }
+  if (isXavierite && xavierCollegeLevel === "senior") {
+    return `Xavier's · UID: ${uid.trim()} · Roll: ${rollNumber.trim()} · ${degreeCourse.trim()} · ${yearDegree}`;
+  }
+  return `${institutionName.trim()} · ${course.trim()} · ${institutionYear.trim()}`;
+}
+
+function buildCollegeString(fields) {
+  const academic = buildAcademicString(fields);
+  const personal = `Gender: ${fields.gender} · DOB: ${formatDob(fields.dateOfBirth)}`;
+  return `${personal} · ${academic}`;
+}
+
+function YesNoQuestion({ label, value, onChange, name, disabled }) {
+  return (
+    <div style={{ ...styles.questionBlock, opacity: disabled ? 0.5 : 1 }}>
+      <p style={styles.questionLabel}>{label}</p>
+      <div style={styles.radioRow}>
+        <label style={styles.radioOption}>
+          <input
+            type="radio"
+            name={name}
+            checked={value === true}
+            onChange={() => onChange(true)}
+            disabled={disabled}
+          />
+          <span>Yes</span>
+        </label>
+        <label style={styles.radioOption}>
+          <input
+            type="radio"
+            name={name}
+            checked={value === false}
+            onChange={() => onChange(false)}
+            disabled={disabled}
+          />
+          <span>No</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function XavierCollegeLevelQuestion({ value, onChange, disabled }) {
+  return (
+    <div style={{ ...styles.questionBlock, opacity: disabled ? 0.5 : 1 }}>
+      <p style={styles.questionLabel}>Select your college level *</p>
+      <div style={styles.radioRow}>
+        <label style={styles.radioOption}>
+          <input
+            type="radio"
+            name="xavier-college-level"
+            checked={value === "junior"}
+            onChange={() => onChange("junior")}
+            disabled={disabled}
+          />
+          <span>Junior College</span>
+        </label>
+        <label style={styles.radioOption}>
+          <input
+            type="radio"
+            name="xavier-college-level"
+            checked={value === "senior"}
+            onChange={() => onChange("senior")}
+            disabled={disabled}
+          />
+          <span>Senior College</span>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export default function Booking() {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -41,11 +183,29 @@ export default function Booking() {
   const countdownRef = useRef(null);
 
   const [name, setName] = useState("");
-  const [college, setCollege] = useState("");
+  const [gender, setGender] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
+
+  const [xavieriteNa, setXavieriteNa] = useState(false);
+  const [isXavierite, setIsXavierite] = useState(null);
+  const [xavierCollegeLevel, setXavierCollegeLevel] = useState(null);
+  const [rollGrNumber, setRollGrNumber] = useState("");
+  const [jcStream, setJcStream] = useState("");
+  const [division, setDivision] = useState("");
+  const [institutionYearJc, setInstitutionYearJc] = useState("");
+  const [uid, setUid] = useState("");
+  const [rollNumber, setRollNumber] = useState("");
+  const [degreeCourse, setDegreeCourse] = useState("");
+  const [yearDegree, setYearDegree] = useState("");
+  const [institutionName, setInstitutionName] = useState("");
+  const [course, setCourse] = useState("");
+  const [institutionYear, setInstitutionYear] = useState("");
+
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [phoneVerified, setPhoneVerified] = useState(null);
@@ -54,6 +214,98 @@ export default function Booking() {
   const location = useLocation();
   const slot = location.state?.slot;
   const event = location.state?.event;
+
+  const clearError = () => {
+    if (error) setError("");
+  };
+
+  const resetJuniorFields = () => {
+    setRollGrNumber("");
+    setJcStream("");
+    setDivision("");
+    setInstitutionYearJc("");
+  };
+
+  const resetDegreeFields = () => {
+    setUid("");
+    setRollNumber("");
+    setDegreeCourse("");
+    setYearDegree("");
+  };
+
+  const resetExternalFields = () => {
+    setInstitutionName("");
+    setCourse("");
+    setInstitutionYear("");
+  };
+
+  const resetAllAcademic = () => {
+    setIsXavierite(null);
+    setXavierCollegeLevel(null);
+    resetJuniorFields();
+    resetDegreeFields();
+    resetExternalFields();
+  };
+
+  const handleXavieriteNaChange = (checked) => {
+    setXavieriteNa(checked);
+    resetAllAcademic();
+    clearError();
+  };
+
+  const handleXavieriteChange = (val) => {
+    setIsXavierite(val);
+    setXavierCollegeLevel(null);
+    resetJuniorFields();
+    resetDegreeFields();
+    resetExternalFields();
+    clearError();
+  };
+
+  const sanitizeUid = (val) => val.replace(/\D/g, "");
+
+  const academicFields = () => ({
+    xavieriteNa,
+    isXavierite,
+    xavierCollegeLevel,
+    rollGrNumber,
+    jcStream,
+    division,
+    institutionYearJc,
+    uid,
+    rollNumber,
+    degreeCourse,
+    yearDegree,
+    institutionName,
+    course,
+    institutionYear,
+    gender,
+    dateOfBirth,
+  });
+
+  const validatePersonal = () => {
+    if (!name.trim()) return "Please enter your name.";
+    if (name.trim().length > 100) return "Name must be 100 characters or fewer.";
+    if (!gender) return "Please select your gender.";
+    if (!dateOfBirth) return "Please enter your date of birth.";
+    const dob = new Date(dateOfBirth);
+    if (Number.isNaN(dob.getTime())) return "Please enter a valid date of birth.";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dob >= today) return "Date of birth must be in the past.";
+    if (!photoUrl) {
+      if (photo) return "Please upload your picture using the button below.";
+      return "Please upload your picture.";
+    }
+    return null;
+  };
+
+  const handleXavierCollegeLevelChange = (level) => {
+    setXavierCollegeLevel(level);
+    resetJuniorFields();
+    resetDegreeFields();
+    clearError();
+  };
 
   const startResendCooldown = () => {
     if (countdownRef.current) clearInterval(countdownRef.current);
@@ -169,75 +421,85 @@ export default function Booking() {
     setResendCountdown(0);
   };
 
-  if (!slot || !event) {
-    return (
-      <>
-        <Menu />
-        <div style={styles.page}>
-          <div style={styles.errorBox}>
-            Invalid booking session. Please go back and select an event.
-          </div>
-          <button
-            type="button"
-            style={styles.backLink}
-            onClick={() => navigate("/events")}
-          >
-            ← Back to events
-          </button>
-        </div>
-      </>
-    );
-  }
+  const validateAcademic = () => {
+    if (xavieriteNa) {
+      const collegeStr = buildCollegeString(academicFields());
+      if (collegeStr.length > COLLEGE_MAX_LEN) {
+        return "Details are too long. Please shorten your entries.";
+      }
+      return null;
+    }
+    if (isXavierite === null) return "Please answer: Are you a Xavierite?";
+    if (isXavierite) {
+      if (!xavierCollegeLevel) return "Please select Junior College or Senior College.";
+      if (xavierCollegeLevel === "junior") {
+        if (!rollGrNumber.trim()) return "Please enter your Roll Number / GR Number.";
+        if (!jcStream) return "Please select your Stream (Science / Commerce / Arts).";
+        if (!division.trim()) return "Please enter your Division.";
+        if (!institutionYearJc) return "Please select your Institution Year (FYJC / SYJC).";
+      } else {
+        if (!uid.trim()) return "Please enter your UID.";
+        if (!/^\d+$/.test(uid.trim())) return "Please enter a valid UID.";
+        if (!rollNumber.trim()) return "Please enter your Roll Number.";
+        if (!degreeCourse.trim()) return "Please enter your Course.";
+        if (!yearDegree) return "Please select your Year (FY / SY / TY).";
+      }
+    } else {
+      if (!institutionName.trim()) return "Please enter your Institution Name.";
+      if (!course.trim()) return "Please enter your Course.";
+      if (!institutionYear.trim()) return "Please enter your Institution Year.";
+    }
+    const collegeStr = buildCollegeString(academicFields());
+    if (collegeStr.length > COLLEGE_MAX_LEN) {
+      return "Academic details are too long. Please shorten your entries.";
+    }
+    return null;
+  };
 
-  if (phoneVerified === null) {
-    return (
-      <>
-        <Menu />
-        <div style={styles.page}>
-          <p style={{ textAlign: "center", color: "#888" }}>Loading…</p>
-        </div>
-      </>
-    );
-  }
+  const getCollegeValue = () => buildCollegeString(academicFields());
 
   const validate = () => {
     if (!phoneVerified) return "Verify your mobile number above to continue.";
-    if (!name.trim()) return "Please enter your name.";
-    if (name.trim().length > 100) return "Name must be 100 characters or fewer.";
-    if (!college.trim()) return "Please enter your college name.";
-    if (college.trim().length > 150) return "College name must be 150 characters or fewer.";
-    if (!photoUrl) return "Please upload a photo first.";
+    const personalError = validatePersonal();
+    if (personalError) return personalError;
+    const academicError = validateAcademic();
+    if (academicError) return academicError;
+    if (!termsAccepted) return "Please accept the Terms & Conditions to continue.";
     return null;
   };
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setError("Only JPEG, PNG, or WebP images are allowed.");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      setError("Photo must be smaller than 5MB.");
+    const validationError = validatePhotoFile(file);
+    if (validationError) {
+      setError(validationError);
       e.target.value = "";
       return;
     }
     setPhoto(file);
     setPhotoPreview(URL.createObjectURL(file));
     setPhotoUrl(null);
-    if (error) setError("");
+    clearError();
   };
 
   const handleUploadPhoto = async () => {
     if (!photo) return;
+    const validationError = validatePhotoFile(photo);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setUploading(true);
     setError("");
     try {
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.name}`;
+      const ext = photo.name.match(ALLOWED_EXT)?.[1]?.toLowerCase() || "jpg";
+      const safeExt = ext === "jpeg" ? "jpg" : ext;
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
+      const contentType = safeExt === "png" ? "image/png" : "image/jpeg";
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(fileName, photo);
+        .upload(fileName, photo, { contentType, upsert: false });
 
       if (uploadError) {
         setError("Photo upload failed. Please try again.");
@@ -267,7 +529,7 @@ export default function Booking() {
         `${API}/book-free`,
         {
           name: name.trim(),
-          college: college.trim(),
+          college: getCollegeValue(),
           slot_id: slot.id,
           event_id: event.id,
           photo_url: photoUrl,
@@ -329,7 +591,7 @@ export default function Booking() {
               {
                 order_id: order.order_id,
                 name: name.trim(),
-                college: college.trim(),
+                college: getCollegeValue(),
                 slot_id: slot.id,
                 event_id: event.id,
                 photo_url: photoUrl,
@@ -373,16 +635,187 @@ export default function Booking() {
     }
   };
 
+  if (!slot || !event) {
+    return (
+      <>
+        <Menu />
+        <div style={styles.page}>
+          <div style={styles.errorBox}>
+            Invalid booking session. Please go back and select an event.
+          </div>
+          <button
+            type="button"
+            style={styles.backLink}
+            onClick={() => navigate("/events")}
+          >
+            ← Back to events
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  if (phoneVerified === null) {
+    return (
+      <>
+        <Menu />
+        <div style={styles.page}>
+          <p style={{ textAlign: "center", color: "#888" }}>Loading…</p>
+        </div>
+      </>
+    );
+  }
+
   const isPhotoReady = !!photoUrl;
-  const isProfileReady = name.trim() && college.trim() && isPhotoReady;
-  const canBook = phoneVerified && isProfileReady;
+  const isPersonalReady = validatePersonal() === null;
+  const isAcademicReady = validateAcademic() === null;
+  const canBook = phoneVerified && isPersonalReady && isAcademicReady && termsAccepted;
 
   const payLabel = () => {
     if (loading) return "Please wait…";
     if (!phoneVerified) return "Verify mobile number to continue";
-    if (!isPhotoReady) return "Upload photo to continue";
-    if (!name.trim() || !college.trim()) return "Complete your details to continue";
+    if (!isPersonalReady) return "Complete personal details to continue";
+    if (!xavieriteNa && !isAcademicReady) return "Complete academic section to continue";
+    if (!termsAccepted) return "Accept Terms & Conditions to continue";
     return event.price > 0 ? `Pay ₹${event.price}` : "Book Free Pass";
+  };
+
+  const renderAcademicFields = () => {
+    if (xavieriteNa) return null;
+    if (isXavierite === null) return null;
+
+    if (isXavierite) {
+      return (
+        <>
+          <XavierCollegeLevelQuestion
+            value={xavierCollegeLevel}
+            onChange={handleXavierCollegeLevelChange}
+          />
+          {xavierCollegeLevel === "junior" && (
+            <>
+              <label style={styles.label} htmlFor="roll-gr">Roll Number / GR Number *</label>
+              <input
+                id="roll-gr"
+                value={rollGrNumber}
+                onChange={(e) => { setRollGrNumber(e.target.value); clearError(); }}
+                style={styles.input}
+                maxLength={40}
+                placeholder="e.g. 12345"
+              />
+              <label style={styles.label} htmlFor="jc-stream">Stream (Science / Commerce / Arts) *</label>
+              <select
+                id="jc-stream"
+                value={jcStream}
+                onChange={(e) => { setJcStream(e.target.value); clearError(); }}
+                style={styles.input}
+              >
+                <option value="">Select stream</option>
+                {JC_STREAMS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <label style={styles.label} htmlFor="division">Division *</label>
+              <input
+                id="division"
+                value={division}
+                onChange={(e) => { setDivision(e.target.value); clearError(); }}
+                style={styles.input}
+                maxLength={20}
+                placeholder="e.g. A"
+              />
+              <label style={styles.label} htmlFor="jc-year">Institution Year *</label>
+              <select
+                id="jc-year"
+                value={institutionYearJc}
+                onChange={(e) => { setInstitutionYearJc(e.target.value); clearError(); }}
+                style={styles.input}
+              >
+                <option value="">Select year</option>
+                <option value="FYJC">FYJC</option>
+                <option value="SYJC">SYJC</option>
+              </select>
+            </>
+          )}
+          {xavierCollegeLevel === "senior" && (
+            <>
+              <label style={styles.label} htmlFor="uid">UID *</label>
+              <input
+                id="uid"
+                type="tel"
+                inputMode="numeric"
+                value={uid}
+                onChange={(e) => { setUid(sanitizeUid(e.target.value)); clearError(); }}
+                style={styles.input}
+                maxLength={20}
+                placeholder="e.g. 1234567890"
+              />
+              <label style={styles.label} htmlFor="degree-roll">Roll Number *</label>
+              <input
+                id="degree-roll"
+                value={rollNumber}
+                onChange={(e) => { setRollNumber(e.target.value); clearError(); }}
+                style={styles.input}
+                maxLength={40}
+                placeholder="e.g. 12345"
+              />
+              <label style={styles.label} htmlFor="degree-course">Course *</label>
+              <input
+                id="degree-course"
+                value={degreeCourse}
+                onChange={(e) => { setDegreeCourse(e.target.value); clearError(); }}
+                style={styles.input}
+                maxLength={80}
+                placeholder="e.g. BSc.IT"
+              />
+              <label style={styles.label} htmlFor="degree-year">Year *</label>
+              <select
+                id="degree-year"
+                value={yearDegree}
+                onChange={(e) => { setYearDegree(e.target.value); clearError(); }}
+                style={styles.input}
+              >
+                <option value="">Select year</option>
+                <option value="FY">FY</option>
+                <option value="SY">SY</option>
+                <option value="TY">TY</option>
+              </select>
+            </>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <label style={styles.label} htmlFor="institution">Institution Name *</label>
+        <input
+          id="institution"
+          value={institutionName}
+          onChange={(e) => { setInstitutionName(e.target.value); clearError(); }}
+          style={styles.input}
+          maxLength={100}
+          placeholder="e.g. Mumbai University College"
+        />
+        <label style={styles.label} htmlFor="ext-course">Course *</label>
+        <input
+          id="ext-course"
+          value={course}
+          onChange={(e) => { setCourse(e.target.value); clearError(); }}
+          style={styles.input}
+          maxLength={80}
+          placeholder="e.g. B.Sc Computer Science"
+        />
+        <label style={styles.label} htmlFor="ext-year">Institution Year *</label>
+        <input
+          id="ext-year"
+          value={institutionYear}
+          onChange={(e) => { setInstitutionYear(e.target.value); clearError(); }}
+          style={styles.input}
+          maxLength={40}
+          placeholder="e.g. 2nd Year, FY, SY"
+        />
+      </>
+    );
   };
 
   return (
@@ -476,7 +909,7 @@ export default function Booking() {
 
           <div style={styles.sectionDivider} />
 
-          <p style={styles.sectionTitle}>Your details</p>
+          <p style={styles.sectionTitle}>Personal details</p>
 
           <label style={styles.label} htmlFor="booking-name">Full name *</label>
           <input
@@ -485,40 +918,58 @@ export default function Booking() {
             value={name}
             onChange={(e) => {
               setName(e.target.value);
-              if (error) setError("");
+              clearError();
             }}
             style={styles.input}
             maxLength={100}
           />
 
-          <label style={styles.label} htmlFor="booking-college">College *</label>
-          <input
-            id="booking-college"
-            placeholder="e.g. St. Xavier's College"
-            value={college}
-            onChange={(e) => {
-              setCollege(e.target.value);
-              if (error) setError("");
-            }}
+          <label style={styles.label} htmlFor="booking-gender">Gender *</label>
+          <select
+            id="booking-gender"
+            value={gender}
+            onChange={(e) => { setGender(e.target.value); clearError(); }}
             style={styles.input}
-            maxLength={150}
+          >
+            <option value="">Select gender</option>
+            {GENDERS.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+
+          <label style={styles.label} htmlFor="booking-dob">Date of birth *</label>
+          <input
+            id="booking-dob"
+            type="date"
+            value={dateOfBirth}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => { setDateOfBirth(e.target.value); clearError(); }}
+            style={styles.input}
           />
 
-          <label style={styles.label}>Photo *</label>
+          <label style={styles.label}>Upload your picture *</label>
+          <p style={styles.photoGuidelines}>
+            JPG or PNG only · Max 250 KB · Clear face, solo photo (no group, blur, or obstructed face)
+          </p>
+          <img
+            src="/photo-guidance.png"
+            alt="Valid vs invalid photo examples"
+            style={styles.photoGuideImage}
+          />
           <label htmlFor="booking-photo" style={styles.fileLabel}>
             {photoPreview ? (
               <img src={photoPreview} alt="Preview" style={styles.photoPreview} />
             ) : (
               <div style={styles.filePlaceholder}>
                 <span style={styles.fileIcon}>📷</span>
-                <span style={styles.fileText}>Tap to select photo (JPEG/PNG/WebP, max 5MB)</span>
+                <span style={styles.fileText}>Tap to select photo (JPG / PNG, max 250 KB)</span>
               </div>
             )}
           </label>
           <input
             id="booking-photo"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png"
             capture="user"
             onChange={handlePhotoChange}
             style={{ display: "none" }}
@@ -531,11 +982,11 @@ export default function Booking() {
               disabled={uploading}
               style={{ ...styles.uploadBtn, opacity: uploading ? 0.7 : 1 }}
             >
-              {uploading ? "Uploading…" : "Upload photo"}
+              {uploading ? "Uploading…" : "Upload picture"}
             </button>
           )}
 
-          {isPhotoReady && <div style={styles.uploadedBadge}>✅ Photo uploaded</div>}
+          {isPhotoReady && <div style={styles.uploadedBadge}>✅ Picture uploaded</div>}
 
           {photoPreview && !isPhotoReady && !uploading && (
             <button
@@ -547,9 +998,70 @@ export default function Booking() {
               }}
               style={styles.removePhoto}
             >
-              Remove photo
+              Remove picture
             </button>
           )}
+
+          <div style={styles.sectionDivider} />
+
+          <p style={styles.sectionTitle}>Academic section</p>
+
+          <YesNoQuestion
+            label="Are you a Xavierite?"
+            name="xavierite"
+            value={isXavierite}
+            onChange={handleXavieriteChange}
+            disabled={xavieriteNa}
+          />
+
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={xavieriteNa}
+              onChange={(e) => handleXavieriteNaChange(e.target.checked)}
+            />
+            <span>Not Applicable (For external participants / others)</span>
+          </label>
+
+          {xavieriteNa && (
+            <p style={styles.hintText}>
+              Academic details skipped. Continue to Terms &amp; Conditions below.
+            </p>
+          )}
+
+          {renderAcademicFields()}
+
+          <div style={styles.sectionDivider} />
+
+          <p style={styles.sectionTitle}>Terms &amp; Conditions</p>
+          <div style={styles.termsBox}>
+            {TERMS_SECTIONS.map((section) => (
+              <div key={section.title} style={styles.termsSection}>
+                <p style={styles.termsHeading}>{section.title}</p>
+                <p style={styles.termsBody}>{section.body}</p>
+                {section.bullets && (
+                  <ul style={styles.termsList}>
+                    {section.bullets.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => {
+                setTermsAccepted(e.target.checked);
+                clearError();
+              }}
+            />
+            <span>
+              I have read and agree to the Terms &amp; Conditions above, including consent for my photograph and personal details to be collected and used as described.
+            </span>
+          </label>
         </div>
 
         <button
@@ -639,6 +1151,38 @@ const styles = {
     textTransform: "uppercase",
     letterSpacing: "0.04em",
   },
+  questionBlock: { marginBottom: "16px" },
+  questionLabel: {
+    fontSize: "13px",
+    fontWeight: 700,
+    color: "#333",
+    margin: "0 0 8px 0",
+  },
+  radioRow: { display: "flex", gap: "16px" },
+  radioOption: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "14px",
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  checkboxRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+    fontSize: "13px",
+    color: "#444",
+    lineHeight: 1.5,
+    cursor: "pointer",
+    marginBottom: "4px",
+  },
+  hintText: {
+    fontSize: "12px",
+    color: "#777",
+    margin: "0 0 12px 0",
+    fontStyle: "italic",
+  },
   phoneRow: {
     display: "flex",
     alignItems: "stretch",
@@ -719,6 +1263,19 @@ const styles = {
     borderRadius: "7px",
     marginBottom: "10px",
   },
+  photoGuidelines: {
+    fontSize: "12px",
+    color: "#666",
+    margin: "0 0 10px 0",
+    lineHeight: 1.45,
+  },
+  photoGuideImage: {
+    width: "100%",
+    borderRadius: "10px",
+    marginBottom: "12px",
+    display: "block",
+    border: "1px solid #eee",
+  },
   fileLabel: { display: "block", cursor: "pointer", marginBottom: "8px" },
   filePlaceholder: {
     border: "2px dashed #ddd",
@@ -766,6 +1323,27 @@ const styles = {
     padding: "0 0 12px 0",
     textDecoration: "underline",
   },
+  termsBox: {
+    maxHeight: "220px",
+    overflowY: "auto",
+    padding: "12px 14px",
+    marginBottom: "14px",
+    background: "#fafafa",
+    border: "1px solid #eee",
+    borderRadius: "8px",
+    fontSize: "12px",
+    color: "#444",
+    lineHeight: 1.5,
+  },
+  termsSection: { marginBottom: "12px" },
+  termsHeading: {
+    fontSize: "12px",
+    fontWeight: 700,
+    color: "#333",
+    margin: "0 0 4px 0",
+  },
+  termsBody: { margin: "0 0 4px 0" },
+  termsList: { margin: "4px 0 0 0", paddingLeft: "18px" },
   btn: {
     width: "100%",
     padding: "14px",

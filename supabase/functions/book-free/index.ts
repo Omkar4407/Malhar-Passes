@@ -1,5 +1,6 @@
 import { handleCors, json, requireUserToken, authErrorJson } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
+import { validatePhotoUrl } from "../_shared/booking-validation.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -13,8 +14,11 @@ Deno.serve(async (req) => {
       return json(req, { error: "Missing required fields." }, 400);
     if (name.trim().length > 100)
       return json(req, { error: "Name must be 100 characters or fewer." }, 400);
-    if (college.trim().length > 150)
-      return json(req, { error: "College name must be 150 characters or fewer." }, 400);
+    if (college.trim().length > 450)
+      return json(req, { error: "Booking details must be 450 characters or fewer." }, 400);
+
+    const photoError = validatePhotoUrl(photo_url);
+    if (photoError) return json(req, { error: photoError }, 400);
 
     const { data, error } = await adminSupabase.rpc("book_slot", {
       p_slot_id: slot_id,
