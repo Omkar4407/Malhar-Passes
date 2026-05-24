@@ -1,6 +1,8 @@
 import { handleCors, json, requireUserToken, authErrorJson } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 import { validatePhotoUrl } from "../_shared/booking-validation.ts";
+import { updateUserCollegeByPhone } from "../_shared/attendee-users.ts";
+import { normalizeCollegeDisplayName } from "../_shared/college.ts";
 
 const CF_APP_ID = Deno.env.get("CASHFREE_APP_ID")!;
 const CF_SECRET = Deno.env.get("CASHFREE_SECRET_KEY")!;
@@ -15,7 +17,7 @@ Deno.serve(async (req) => {
 
   try {
     const { phone } = await requireUserToken(req);
-    const { order_id, name, college, slot_id, event_id, photo_url } = await req.json();
+    const { order_id, name, college, college_name, slot_id, event_id, photo_url } = await req.json();
 
     if (!order_id) return json(req, { error: "order_id is required." }, 400);
 
@@ -73,6 +75,9 @@ Deno.serve(async (req) => {
     });
     if (error) throw error;
     if (!data.success) return json(req, { success: false, error: data.error || "Slot is full." }, 409);
+
+    const displayCollege = normalizeCollegeDisplayName(college_name);
+    if (displayCollege) await updateUserCollegeByPhone(phone, displayCollege);
 
     const { data: ticket } = await adminSupabase
       .from("tickets")

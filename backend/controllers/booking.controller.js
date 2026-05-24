@@ -5,7 +5,9 @@ import {
   bookSlot,
   fetchTicketById,
   fetchTicketsByPhone,
+  updateUserCollegeByPhone,
 } from "../services/booking.service.js";
+import { normalizeCollegeDisplayName } from "../utils/college.js";
 import { validatePhotoUrl } from "../utils/bookingValidation.js";
 
 // ── GET /my-tickets ───────────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ export async function verifyPayment(req, res) {
       razorpay_signature,
       name,
       college,
+      college_name,
       slot_id,
       event_id,
       photo_url,
@@ -98,6 +101,9 @@ export async function verifyPayment(req, res) {
       return res.status(409).json({ success: false, error: result.error || "Slot is full." });
     }
 
+    const displayCollege = normalizeCollegeDisplayName(college_name);
+    if (displayCollege) await updateUserCollegeByPhone(req.userPhone, displayCollege);
+
     const ticket = await fetchTicketById(result.ticket_id);
     return res.json({ success: true, ticket });
   } catch (err) {
@@ -109,7 +115,7 @@ export async function verifyPayment(req, res) {
 // ── POST /book-free ───────────────────────────────────────────────────────────
 export async function bookFree(req, res) {
   try {
-    const { name, college, slot_id, event_id, photo_url } = req.body;
+    const { name, college, college_name, slot_id, event_id, photo_url } = req.body;
 
     if (!name || !college || !slot_id || !event_id) {
       return res.status(400).json({ error: "Missing required fields." });
@@ -139,6 +145,9 @@ export async function bookFree(req, res) {
     if (!result.success) {
       return res.status(409).json({ error: result.error || "Slot is full." });
     }
+
+    const displayCollege = normalizeCollegeDisplayName(college_name);
+    if (displayCollege) await updateUserCollegeByPhone(req.userPhone, displayCollege);
 
     const ticket = await fetchTicketById(result.ticket_id);
     return res.json({ success: true, ticket });

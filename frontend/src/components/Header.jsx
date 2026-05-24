@@ -11,8 +11,8 @@ export default function Header() {
   const isAdminOrScanner = ADMIN_PATHS.includes(location.pathname);
 
   const navItems = [
-    { label: "Events",     path: "/events" },
-    { label: "My Ticket",  path: "/ticket" },
+    { label: "Events",   path: "/events" },
+    { label: "Account",  path: "/account" },
   ];
 
   return (

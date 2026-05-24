@@ -4,7 +4,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import Menu from "../components/Menu";
 import { bustSlotsCache } from "./Events";
-import { bustTicketsCache } from "./Ticket";
+import { lsBust } from "../lib/cache";
+import { bustTicketsCache } from "../lib/tickets";
+import {
+  buildCollegeString,
+  getCollegeDisplayName,
+} from "../lib/college";
+
+function bustProfileCache() {
+  const token = localStorage.getItem("userToken");
+  lsBust(`profile:${token?.slice(-24) || "anon"}`);
+}
 
 const API = import.meta.env.VITE_BACKEND_URL;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
@@ -73,44 +83,6 @@ function loadCashfreeSDK() {
     script.onerror = reject;
     document.head.appendChild(script);
   });
-}
-
-function formatDob(isoDate) {
-  if (!isoDate) return "";
-  const [y, m, d] = isoDate.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-function buildAcademicString({
-  xavieriteNa,
-  isXavierite,
-  xavierCollegeLevel,
-  rollGrNumber,
-  jcStream,
-  division,
-  institutionYearJc,
-  uid,
-  rollNumber,
-  degreeCourse,
-  yearDegree,
-  institutionName,
-  course,
-  institutionYear,
-}) {
-  if (xavieriteNa) return "External / Others (N/A)";
-  if (isXavierite && xavierCollegeLevel === "junior") {
-    return `Xavier's JC · Roll/GR: ${rollGrNumber.trim()} · ${jcStream} · Div ${division.trim()} · ${institutionYearJc}`;
-  }
-  if (isXavierite && xavierCollegeLevel === "senior") {
-    return `Xavier's · UID: ${uid.trim()} · Roll: ${rollNumber.trim()} · ${degreeCourse.trim()} · ${yearDegree}`;
-  }
-  return `${institutionName.trim()} · ${course.trim()} · ${institutionYear.trim()}`;
-}
-
-function buildCollegeString(fields) {
-  const academic = buildAcademicString(fields);
-  const personal = `Gender: ${fields.gender} · DOB: ${formatDob(fields.dateOfBirth)}`;
-  return `${personal} · ${academic}`;
 }
 
 function YesNoQuestion({ label, value, onChange, name, disabled }) {
@@ -457,6 +429,7 @@ export default function Booking() {
   };
 
   const getCollegeValue = () => buildCollegeString(academicFields());
+  const getCollegeNameValue = () => getCollegeDisplayName(academicFields());
 
   const validate = () => {
     if (!phoneVerified) return "Verify your mobile number above to continue.";
@@ -530,6 +503,7 @@ export default function Booking() {
         {
           name: name.trim(),
           college: getCollegeValue(),
+          college_name: getCollegeNameValue(),
           slot_id: slot.id,
           event_id: event.id,
           photo_url: photoUrl,
@@ -538,6 +512,7 @@ export default function Booking() {
       );
       bustSlotsCache(event.id);
       bustTicketsCache();
+      bustProfileCache();
       navigate("/ticket", { state: { ticket: data.ticket } });
     } catch (err) {
       const msg = err.response?.data?.error;
@@ -592,6 +567,7 @@ export default function Booking() {
                 order_id: order.order_id,
                 name: name.trim(),
                 college: getCollegeValue(),
+                college_name: getCollegeNameValue(),
                 slot_id: slot.id,
                 event_id: event.id,
                 photo_url: photoUrl,
@@ -602,6 +578,7 @@ export default function Booking() {
             if (verify.data.success) {
               bustSlotsCache(event.id);
               bustTicketsCache();
+              bustProfileCache();
               navigate("/ticket", { state: { ticket: verify.data.ticket } });
             } else {
               setError("Payment verification failed. Please contact support.");

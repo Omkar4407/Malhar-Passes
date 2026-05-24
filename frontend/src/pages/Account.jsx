@@ -1,18 +1,21 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { supabase } from "../lib/supabase";
 import { lsCached, lsBust } from "../lib/cache";
+import { clearAuthStorage } from "../lib/auth";
 import Menu from "../components/Menu";
 import Header from "../components/Header";
+import MyTicketsList from "../components/MyTicketsList";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
-// MED #4: Allowed MIME types and max file size
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
-const PROFILE_TTL = 5 * 60_000; // 5 minutes — profile rarely changes
+const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const PROFILE_TTL = 5 * 60_000;
 
 export default function Account() {
+  const navigate = useNavigate();
   const phoneLs = localStorage.getItem("userPhone");
 
   const [user, setUser] = useState(null);
@@ -23,14 +26,14 @@ export default function Account() {
   const [form, setForm] = useState({
     full_name: "",
     email: "",
-    college: "",
   });
-
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const fileInputRef = useRef();
 
-  useEffect(() => { fetchUser(); }, []);
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   const fetchUser = async () => {
     try {
@@ -47,7 +50,6 @@ export default function Account() {
         setForm({
           full_name: data.full_name || "",
           email: data.email || "",
-          college: data.college || "",
         });
       }
     } catch (err) {
@@ -61,7 +63,6 @@ export default function Account() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // MED #4: Validate type and size before accepting the file
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -88,22 +89,16 @@ export default function Account() {
 
     if (photo) {
       const fileName = `${Date.now()}-${photo.name}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("photos")
-        .upload(fileName, photo);
+      const { error: uploadErr } = await supabase.storage.from("photos").upload(fileName, photo);
 
       if (uploadErr) {
-        // LOW #1: Generic message to user, real error to console only
         console.error("Photo upload error:", uploadErr);
         showToast("error", "Photo upload failed. Please try again.");
         setSaving(false);
         return;
       }
 
-      const { data } = supabase.storage
-        .from("photos")
-        .getPublicUrl(fileName);
-
+      const { data } = supabase.storage.from("photos").getPublicUrl(fileName);
       photoUrl = data.publicUrl;
     }
 
@@ -120,13 +115,11 @@ export default function Account() {
       .update({
         full_name: form.full_name,
         email: form.email,
-        college: form.college,
         photo_url: photoUrl,
       })
       .eq(filterCol, filterVal);
 
     if (updateErr) {
-      // LOW #1: Don't expose DB error details
       console.error("Profile update error:", updateErr);
       showToast("error", "Update failed. Please try again.");
     } else {
@@ -140,114 +133,114 @@ export default function Account() {
     setSaving(false);
   };
 
+  const handleLogout = () => {
+    clearAuthStorage();
+    navigate("/", { replace: true });
+  };
+
   const avatarSrc = photoPreview || user?.photo_url || null;
   const initials = (form.full_name || phoneLs || user?.email || "?")[0].toUpperCase();
   const phoneDisplay = user?.phone_number || phoneLs || "";
-
-  if (loading) return (
-    <>
-      <Menu />
-      <Header />
-      <div style={styles.loadingWrap}>
-        <p style={styles.loadingText}>Loading profile…</p>
-      </div>
-    </>
-  );
 
   return (
     <>
       <Menu />
       <Header />
 
-      {/* Toast */}
       {toast && (
-        <div style={{
-          ...styles.toast,
-          background: toast.type === "success" ? "#1a7a45" : "#d0312d",
-        }}>
-          {toast.type === "success" ? "✓ " : "✕ "}{toast.msg}
+        <div
+          style={{
+            ...styles.toast,
+            background: toast.type === "success" ? "#1a7a45" : "#d0312d",
+          }}
+        >
+          {toast.type === "success" ? "✓ " : "✕ "}
+          {toast.msg}
         </div>
       )}
 
       <div style={styles.page}>
+        <h1 style={styles.pageTitle}>My Account</h1>
 
-        {/* ── Avatar section ── */}
-        <div style={styles.avatarSection}>
-          <div style={styles.avatarWrap} onClick={() => fileInputRef.current.click()}>
-            {avatarSrc ? (
-              <img src={avatarSrc} alt="profile" style={styles.avatar} />
-            ) : (
-              <div style={styles.avatarPlaceholder}>{initials}</div>
-            )}
-            <div style={styles.avatarOverlay}>
-              <span style={{ fontSize: "18px" }}>📷</span>
+        {loading ? (
+          <p style={styles.loadingText}>Loading profile…</p>
+        ) : (
+          <>
+            <div style={styles.avatarSection}>
+              <div style={styles.avatarWrap} onClick={() => fileInputRef.current?.click()}>
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt="profile" style={styles.avatar} />
+                ) : (
+                  <div style={styles.avatarPlaceholder}>{initials}</div>
+                )}
+                <div style={styles.avatarOverlay}>
+                  <span style={{ fontSize: "18px" }}>📷</span>
+                </div>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoChange}
+                style={{ display: "none" }}
+              />
+              <p style={styles.displayName}>{form.full_name || "Add your name"}</p>
+              <p style={styles.phoneDisplay}>
+                {phoneDisplay ? `+91 ${phoneDisplay}` : "Phone not verified — finish OTP on Login"}
+              </p>
+              <p style={styles.avatarHint}>Tap photo to change (JPEG/PNG/WebP, max 5MB)</p>
             </div>
-          </div>
-          {/* MED #4: accept restricts picker UI; real validation happens in handlePhotoChange */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handlePhotoChange}
-            style={{ display: "none" }}
-          />
-          <p style={styles.avatarHint}>Tap to change photo (JPEG/PNG/WebP, max 5MB)</p>
-          <p style={styles.phoneDisplay}>
-            {phoneDisplay ? `+91 ${phoneDisplay}` : "Phone not verified — finish OTP on Login"}
-          </p>
+
+            <div style={styles.card}>
+              <p style={styles.sectionLabel}>Personal Info</p>
+
+              <Field
+                label="Full Name"
+                value={form.full_name}
+                placeholder="Enter your full name"
+                onChange={(v) => setForm({ ...form, full_name: v })}
+              />
+              <Field
+                label="Email"
+                value={form.email}
+                placeholder="Enter your email"
+                type="email"
+                onChange={(v) => setForm({ ...form, email: v })}
+              />
+              <div style={styles.fieldWrap}>
+                <label style={styles.label}>Phone Number</label>
+                <input
+                  value={phoneDisplay ? `+91 ${phoneDisplay}` : ""}
+                  placeholder="Verify via Login (OTP)"
+                  disabled
+                  style={{ ...styles.input, ...styles.inputDisabled }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleUpdate}
+              disabled={saving}
+              style={{ ...styles.saveBtn, opacity: saving ? 0.7 : 1 }}
+            >
+              {saving ? "Saving…" : "Save Changes"}
+            </button>
+          </>
+        )}
+
+        <div style={styles.ticketsSection}>
+          <MyTicketsList />
         </div>
 
-        {/* ── Card ── */}
-        <div style={styles.card}>
-          <p style={styles.sectionLabel}>Personal Info</p>
-
-          <Field
-            label="Full Name"
-            value={form.full_name}
-            placeholder="Enter your full name"
-            onChange={(v) => setForm({ ...form, full_name: v })}
-          />
-          <Field
-            label="Email"
-            value={form.email}
-            placeholder="Enter your email"
-            type="email"
-            onChange={(v) => setForm({ ...form, email: v })}
-          />
-          <Field
-            label="College"
-            value={form.college}
-            placeholder="Enter your college name"
-            onChange={(v) => setForm({ ...form, college: v })}
-          />
-
-          {/* Phone — read only */}
-          <div style={styles.fieldWrap}>
-            <label style={styles.label}>Phone Number</label>
-            <input
-              value={phoneDisplay ? `+91 ${phoneDisplay}` : ""}
-              placeholder="Verify via Login (OTP)"
-              disabled
-              style={{ ...styles.input, ...styles.inputDisabled }}
-            />
-          </div>
-        </div>
-
-        {/* ── Save button ── */}
-        <button
-          onClick={handleUpdate}
-          disabled={saving}
-          style={{ ...styles.saveBtn, opacity: saving ? 0.7 : 1 }}
-        >
-          {saving ? "Saving…" : "Save Changes"}
+        <button type="button" onClick={handleLogout} style={styles.logoutBtn}>
+          Log out
         </button>
-
       </div>
     </>
   );
 }
 
-// ── Reusable field ────────────────────────────────────────
 function Field({ label, value, onChange, placeholder, type = "text" }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -270,23 +263,24 @@ function Field({ label, value, onChange, placeholder, type = "text" }) {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────
 const styles = {
   page: {
-    padding: "24px 20px 40px",
-    maxWidth: "480px",
+    padding: "24px 20px 48px",
+    maxWidth: "560px",
     margin: "0 auto",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
     color: "#1a1a1a",
   },
-  loadingWrap: {
-    display: "flex",
-    justifyContent: "center",
-    padding: "60px 20px",
+  pageTitle: {
+    fontSize: "22px",
+    fontWeight: 800,
+    margin: "0 0 20px",
+    letterSpacing: "-0.02em",
   },
   loadingText: {
     color: "#aaa",
     fontSize: "14px",
+    marginBottom: "24px",
   },
   toast: {
     position: "fixed",
@@ -306,8 +300,8 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    marginBottom: "24px",
-    gap: "6px",
+    marginBottom: "20px",
+    gap: "4px",
   },
   avatarWrap: {
     position: "relative",
@@ -317,6 +311,7 @@ const styles = {
     cursor: "pointer",
     overflow: "hidden",
     border: "3px solid #FF5C1A",
+    marginBottom: "4px",
   },
   avatar: {
     width: "100%",
@@ -344,18 +339,24 @@ const styles = {
     opacity: 0,
     transition: "opacity 0.2s",
   },
-  avatarHint: {
-    fontSize: "12px",
-    color: "#aaa",
-    margin: 0,
+  displayName: {
+    fontSize: "18px",
+    fontWeight: 800,
+    margin: "4px 0 0",
     textAlign: "center",
   },
   phoneDisplay: {
-    fontSize: "15px",
-    fontWeight: 700,
-    color: "#1a1a1a",
-    margin: 0,
-    letterSpacing: "0.05em",
+    fontSize: "14px",
+    fontWeight: 600,
+    color: "#444",
+    margin: "2px 0 0",
+    letterSpacing: "0.03em",
+  },
+  avatarHint: {
+    fontSize: "11px",
+    color: "#aaa",
+    margin: "4px 0 0",
+    textAlign: "center",
   },
   card: {
     background: "#fff",
@@ -414,5 +415,22 @@ const styles = {
     fontWeight: 700,
     cursor: "pointer",
     letterSpacing: "0.02em",
+    marginBottom: "28px",
+  },
+  ticketsSection: {
+    borderTop: "1px solid #eee",
+    paddingTop: "24px",
+    marginBottom: "24px",
+  },
+  logoutBtn: {
+    width: "100%",
+    padding: "14px",
+    background: "transparent",
+    color: "#d0312d",
+    border: "1.5px solid rgba(208,49,45,0.35)",
+    borderRadius: "12px",
+    fontSize: "15px",
+    fontWeight: 700,
+    cursor: "pointer",
   },
 };

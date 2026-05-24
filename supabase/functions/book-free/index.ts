@@ -1,6 +1,8 @@
 import { handleCors, json, requireUserToken, authErrorJson } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 import { validatePhotoUrl } from "../_shared/booking-validation.ts";
+import { updateUserCollegeByPhone } from "../_shared/attendee-users.ts";
+import { normalizeCollegeDisplayName } from "../_shared/college.ts";
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -8,7 +10,7 @@ Deno.serve(async (req) => {
 
   try {
     const { phone } = await requireUserToken(req);
-    const { name, college, slot_id, event_id, photo_url } = await req.json();
+    const { name, college, college_name, slot_id, event_id, photo_url } = await req.json();
 
     if (!name || !college || !slot_id || !event_id)
       return json(req, { error: "Missing required fields." }, 400);
@@ -35,6 +37,9 @@ Deno.serve(async (req) => {
     });
     if (error) throw error;
     if (!data.success) return json(req, { error: data.error || "Slot is full." }, 409);
+
+    const displayCollege = normalizeCollegeDisplayName(college_name);
+    if (displayCollege) await updateUserCollegeByPhone(phone, displayCollege);
 
     const { data: ticket } = await adminSupabase
       .from("tickets")

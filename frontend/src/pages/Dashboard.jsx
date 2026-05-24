@@ -29,8 +29,17 @@ export default function Dashboard() {
           <button style={styles.actionCard} onClick={() => navigate("/ticket")}>
             <span style={styles.actionIcon}>📋</span>
             <div style={styles.actionText}>
-              <span style={styles.actionLabel}>My Ticket</span>
-              <span style={styles.actionDesc}>View your booking and QR code</span>
+              <span style={styles.actionLabel}>My Tickets</span>
+              <span style={styles.actionDesc}>View bookings and QR codes</span>
+            </div>
+            <span style={styles.actionArrow}>→</span>
+          </button>
+
+          <button style={styles.actionCard} onClick={() => navigate("/account")}>
+            <span style={styles.actionIcon}>👤</span>
+            <div style={styles.actionText}>
+              <span style={styles.actionLabel}>My Account</span>
+              <span style={styles.actionDesc}>Profile, tickets, and settings</span>
             </div>
             <span style={styles.actionArrow}>→</span>
           </button>

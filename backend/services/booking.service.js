@@ -2,6 +2,11 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import adminSupabase from "./supabase.service.js";
 import { cacheGet, bust, TTL } from "./cache.service.js";
+import {
+  COLLEGE_PLACEHOLDER,
+  normalizeCollegeDisplayName,
+  parseCollegeDisplayFromBookingDetails,
+} from "../utils/college.js";
 
 export const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -162,6 +167,7 @@ export async function linkPhoneAfterOtp(phone, googleSubFromToken) {
 
 /** Load profile row for attendee JWT (phone and/or google_sub). */
 export async function fetchUserProfileForAttendee({ phone, google_sub }) {
+  let user = null;
   if (phone) {
     const { data, error } = await adminSupabase
       .from("users")
@@ -169,18 +175,50 @@ export async function fetchUserProfileForAttendee({ phone, google_sub }) {
       .eq("phone_number", phone)
       .maybeSingle();
     if (error) throw error;
-    return data;
-  }
-  if (google_sub) {
+    user = data;
+  } else if (google_sub) {
     const { data, error } = await adminSupabase
       .from("users")
       .select("*")
       .eq("google_sub", google_sub)
       .maybeSingle();
     if (error) throw error;
-    return data;
+    user = data;
   }
-  return null;
+  return enrichUserProfileCollege(user, phone);
+}
+
+export async function updateUserCollegeByPhone(phone, collegeName) {
+  const normalized = normalizeCollegeDisplayName(collegeName);
+  if (!phone || !normalized) return;
+  const { error } = await adminSupabase
+    .from("users")
+    .update({ college: normalized })
+    .eq("phone_number", phone);
+  if (error) throw error;
+}
+
+export async function enrichUserProfileCollege(user, phone) {
+  if (!user) return null;
+
+  let display = user.college?.trim() || null;
+  const parsedStored = parseCollegeDisplayFromBookingDetails(display);
+  if (parsedStored) {
+    display = parsedStored;
+  } else if (display?.includes("Gender:")) {
+    display = null;
+  } else if (display && display.length > 120) {
+    display = null;
+  }
+
+  if (!display && phone) {
+    const tickets = await fetchTicketsByPhone(phone);
+    if (tickets[0]?.college) {
+      display = parseCollegeDisplayFromBookingDetails(tickets[0].college);
+    }
+  }
+
+  return { ...user, college: display || COLLEGE_PLACEHOLDER };
 }
 
 // ── Fetch all tickets for a user (by phone from JWT) ─────────────────────────

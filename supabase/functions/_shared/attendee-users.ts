@@ -1,4 +1,8 @@
 import adminSupabase from "./supabase.ts";
+import {
+  COLLEGE_PLACEHOLDER,
+  parseCollegeDisplayFromBookingDetails,
+} from "./college.ts";
 
 export async function upsertUser(phone: string) {
   await adminSupabase
@@ -72,12 +76,62 @@ export async function linkPhoneAfterOtp(phone: string, googleSubFromToken: strin
   if (linkErr) throw linkErr;
 }
 
+async function fetchLatestTicketCollege(phone: string): Promise<string | null> {
+  const { data, error } = await adminSupabase
+    .from("tickets")
+    .select("college")
+    .eq("phone", phone)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.college ?? null;
+}
+
+async function enrichUserProfileCollege(
+  user: Record<string, unknown> | null,
+  phone: string | null | undefined,
+) {
+  if (!user) return null;
+
+  let display = (user.college as string | null)?.trim() || null;
+  const parsedStored = parseCollegeDisplayFromBookingDetails(display);
+  if (parsedStored) {
+    display = parsedStored;
+  } else if (display?.includes("Gender:")) {
+    display = null;
+  } else if (display && display.length > 120) {
+    display = null;
+  }
+
+  if (!display && phone) {
+    const ticketCollege = await fetchLatestTicketCollege(phone);
+    if (ticketCollege) {
+      display = parseCollegeDisplayFromBookingDetails(ticketCollege);
+    }
+  }
+
+  return { ...user, college: display || COLLEGE_PLACEHOLDER };
+}
+
+export async function updateUserCollegeByPhone(phone: string, collegeName: string) {
+  const trimmed = collegeName?.trim();
+  if (!phone || !trimmed || trimmed.length > 120) return;
+  const { error } = await adminSupabase
+    .from("users")
+    .update({ college: trimmed })
+    .eq("phone_number", phone);
+  if (error) throw error;
+}
+
 export async function fetchUserProfileForAttendee(opts: {
   phone?: string | null;
   google_sub?: string | null;
 }) {
   const phone = opts.phone;
   const google_sub = opts.google_sub;
+  let user: Record<string, unknown> | null = null;
+
   if (phone) {
     const { data, error } = await adminSupabase
       .from("users")
@@ -85,16 +139,16 @@ export async function fetchUserProfileForAttendee(opts: {
       .eq("phone_number", phone)
       .maybeSingle();
     if (error) throw error;
-    return data;
-  }
-  if (google_sub) {
+    user = data;
+  } else if (google_sub) {
     const { data, error } = await adminSupabase
       .from("users")
       .select("*")
       .eq("google_sub", google_sub)
       .maybeSingle();
     if (error) throw error;
-    return data;
+    user = data;
   }
-  return null;
+
+  return enrichUserProfileCollege(user, phone);
 }

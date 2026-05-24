@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { clearAuthStorage } from "../lib/auth";
 
 // Determine which nav items to show based on who is logged in.
 // Regular users never see admin/scanner links.
@@ -53,11 +54,7 @@ export default function Menu() {
 
   const handleLogout = () => {
     setOpen(false);
-    [
-      "userToken", "userPhone",
-      "adminToken", "admin",
-      "scannerToken", "scannerAuth", "scannerEmail",
-    ].forEach((key) => localStorage.removeItem(key));
+    clearAuthStorage();
     navigate("/");
   };
 
