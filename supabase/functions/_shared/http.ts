@@ -26,14 +26,14 @@ export function json(req: Request, body: unknown, status = 200): Response {
 
 import { verifyTokenPayload } from "./jwt.ts";
 
-export async function requireUserToken(req: Request): Promise<{ phone: string }> {
+export async function requireUserToken(req: Request): Promise<{ phone?: string; email?: string }> {
   const auth = req.headers.get("authorization") || "";
   if (!auth.startsWith("Bearer "))
     throw Object.assign(new Error("Missing token."), { status: 401 });
   const payload = await verifyTokenPayload(auth.slice(7));
-  if (payload.role !== "user" || !payload.phone)
+  if ((payload.role !== "user" && payload.role !== "student") || (!payload.phone && !payload.email))
     throw Object.assign(new Error("Invalid token role."), { status: 403 });
-  return { phone: payload.phone as string };
+  return { phone: payload.phone as string | undefined, email: payload.email as string | undefined };
 }
 
 export async function requireAdminToken(req: Request): Promise<void> {

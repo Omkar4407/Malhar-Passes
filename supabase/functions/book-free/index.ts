@@ -1,12 +1,16 @@
 import { handleCors, json, requireUserToken } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 
+declare const Deno: {
+  serve: (handler: (req: Request) => Promise<Response>) => void;
+  env: { get: (key: string) => string | undefined; };
+};
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
 
   try {
-    const { phone } = await requireUserToken(req);
+    const { phone, email } = await requireUserToken(req);
     const { name, college, slot_id, event_id, photo_url } = await req.json();
 
     if (!name || !college || !slot_id || !event_id)
@@ -21,7 +25,7 @@ Deno.serve(async (req) => {
       p_ticket_data: {
         name: name.trim(),
         college: college.trim(),
-        phone, // always from JWT
+        phone: phone || email, // use whichever identifier is available
         event_id,
         photo_url,
         payment_status: "free",

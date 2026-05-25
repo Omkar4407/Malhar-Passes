@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
-    const { phone } = await requireUserToken(req);
+    const { phone, email } = await requireUserToken(req);
     const { order_id, name, college, slot_id, event_id, photo_url } = await req.json();
 
     if (!order_id) return json(req, { error: "order_id is required." }, 400);
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       p_ticket_data: {
         name: trimmedName,
         college: trimmedCollege,
-        phone,
+        phone: phone || email,
         event_id,
         photo_url,
         payment_status: "paid",

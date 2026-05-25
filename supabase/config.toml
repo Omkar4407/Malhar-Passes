@@ -1,0 +1,46 @@
+project_id = "nodhwdtchkrcsqnywdnb"
+
+[functions.admin-events]
+verify_jwt = false
+
+[functions.admin-login]
+verify_jwt = false
+
+[functions.admin-slots]
+verify_jwt = false
+
+[functions.auth-supabase]
+verify_jwt = false
+
+[functions.book-free]
+verify_jwt = false
+
+[functions.create-order]
+verify_jwt = false
+
+[functions.get-events]
+verify_jwt = false
+
+[functions.get-slots]
+verify_jwt = false
+
+[functions.my-tickets]
+verify_jwt = false
+
+[functions.scanner-checkin]
+verify_jwt = false
+
+[functions.scanner-login]
+verify_jwt = false
+
+[functions.scanner-ticket]
+verify_jwt = false
+
+[functions.toggle-release-slot]
+verify_jwt = false
+
+[functions.verify-payment]
+verify_jwt = false
+
+[functions.verify-token]
+verify_jwt = false

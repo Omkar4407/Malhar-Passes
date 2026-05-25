@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
     const name = data.user.user_metadata?.full_name || email.split("@")[0] || "User";
 
     // Issue standard userToken for frontend
-    const token = await signToken({ role: "student", email, name, sub: data.user.id });
+    const token = await signToken({ role: "user", email, name, sub: data.user.id });
 
     return json(req, { success: true, token, user: { email, name } });
   } catch (err) {

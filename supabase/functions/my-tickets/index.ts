@@ -6,7 +6,8 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
-    const { phone } = await requireUserToken(req);
+    const { phone, email } = await requireUserToken(req);
+    const identifier = phone || email;
 
     const { data, error } = await adminSupabase
       .from("tickets")
@@ -19,7 +20,7 @@ Deno.serve(async (req) => {
           events!slots_event_id_fkey ( id, name )
         )
       `)
-      .eq("phone", phone)
+      .eq("phone", identifier)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
