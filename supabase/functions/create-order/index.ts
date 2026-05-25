@@ -24,7 +24,8 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
-    const { phone } = await requireUserToken(req);
+    const { phone, email } = await requireUserToken(req);
+    const identifier = phone || email || "unknown";
     const { amount, slot_id, event_id } = await req.json();
 
     if (!amount || !slot_id || !event_id) {
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
 
     // Build unique order_id
     const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(`${phone}:${slot_id}:${event_id}:${Date.now()}`));
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(`${identifier}:${slot_id}:${event_id}:${Date.now()}`));
     const order_id = "malhar_" + Array.from(new Uint8Array(hashBuffer))
       .map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 20);
 
@@ -55,8 +56,9 @@ Deno.serve(async (req) => {
         order_amount: amount,
         order_currency: "INR",
         customer_details: {
-          customer_id: phone,
-          customer_phone: phone,
+          customer_id: identifier,
+          customer_phone: phone || "0000000000",
+          customer_email: email || undefined,
         },
       }),
     });

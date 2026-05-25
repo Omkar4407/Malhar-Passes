@@ -58,24 +58,8 @@ export default function Events() {
       if (slots.length === 1) {
         const s = slots[0];
         if (s.is_released && s.booked_count < s.capacity) {
-          try {
-            const { data: check } = await axios.get(
-              `${API}/check-slot?slot_id=${s.id}`,
-              { headers: authHeader() }
-            );
-            if (!check.allowed) {
-              if (check.reason === "DUPLICATE_TICKET") {
-                showToast("You already have a ticket for this slot.");
-              } else if (check.reason === "SLOT_FULL") {
-                showToast("This slot is sold out.");
-              } else {
-                showToast(check.message || "Cannot book this slot.");
-              }
-              setNavigating(null);
-              return;
-            }
-          } catch {}
-          navigate("/booking", { state: { slot: s, event } });
+            // We skip the pre-check here and let the booking endpoint handle 409 errors
+            navigate("/booking", { state: { slot: s, event } });
         } else {
           navigate("/slots", { state: { slots, event } });
         }
