@@ -10,6 +10,7 @@ export default function ScannerLogin() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
 
   const handleLogin = async () => {
     setError("");
@@ -23,16 +24,20 @@ export default function ScannerLogin() {
     setLoading(true);
 
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/scanner-login`, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/scanner-login`, {
         email: email.trim().toLowerCase(),
         password,
       });
 
-      localStorage.setItem("scannerToken", data.token);
+      setAttemptsLeft(null);
+      localStorage.setItem("scannerToken", res.data.token);
       localStorage.setItem("scannerAuth", "true");
-      localStorage.setItem("scannerEmail", data.admin.email);
+      localStorage.setItem("scannerEmail", res.data.admin.email);
       navigate("/scanner");
     } catch (err) {
+      const hdrs = err?.response?.headers || {};
+      const remaining = hdrs["ratelimit-remaining"] ?? hdrs["x-ratelimit-remaining"];
+      if (remaining !== undefined) setAttemptsLeft(Number(remaining));
       setError(err?.response?.data?.error || "Access denied. Check your credentials.");
     } finally {
       setLoading(false);
@@ -71,6 +76,18 @@ export default function ScannerLogin() {
               <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm flex items-start gap-3 mb-6">
                 <AlertTriangle size={18} className="flex-shrink-0 mt-0.5" />
                 <p className="leading-snug">{error}</p>
+              </div>
+            )}
+
+            {/* Attempts remaining pill */}
+            {attemptsLeft !== null && !error.includes("wait") && (
+              <div className={`flex items-center justify-center gap-2 text-xs font-bold px-4 py-2 rounded-full border mb-4 ${
+                attemptsLeft <= 1
+                  ? "bg-[#93000a]/30 border-[#ffb4ab]/40 text-[#ffb4ab]"
+                  : "bg-[#261938]/60 border-[#a78899]/20 text-[#a78899]"
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${attemptsLeft <= 1 ? "bg-[#ffb4ab]" : "bg-[#a78899]"}`} />
+                {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""} remaining
               </div>
             )}
 

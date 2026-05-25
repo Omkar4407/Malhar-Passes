@@ -9,6 +9,7 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [attemptsLeft, setAttemptsLeft] = useState(null); // null = not yet tried
   const navigate = useNavigate();
 
   const handleLogin = async () => {
@@ -21,15 +22,20 @@ export default function AdminLogin() {
     setError("");
 
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin-login`, {
+      const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin-login`, {
         email: email.trim().toLowerCase(),
         password,
       });
-
-      localStorage.setItem("adminToken", data.token);
-      localStorage.setItem("admin", JSON.stringify(data.admin));
+      // Successful login — clear counter and navigate
+      setAttemptsLeft(null);
+      localStorage.setItem("adminToken", res.data.token);
+      localStorage.setItem("admin", JSON.stringify(res.data.admin));
       navigate("/admin");
     } catch (err) {
+      // axios lowercases all header names; express-rate-limit v6+ uses 'ratelimit-remaining'
+      const hdrs = err?.response?.headers || {};
+      const remaining = hdrs["ratelimit-remaining"] ?? hdrs["x-ratelimit-remaining"];
+      if (remaining !== undefined) setAttemptsLeft(Number(remaining));
       setError(err?.response?.data?.error || "Login failed. Please check your credentials.");
     } finally {
       setLoading(false);
@@ -67,6 +73,18 @@ export default function AdminLogin() {
           {error && (
             <div className="bg-[#93000a]/20 border border-[#ffb4ab]/30 text-[#ffb4ab] p-4 rounded-xl text-sm font-medium text-center">
               {error}
+            </div>
+          )}
+
+          {/* Attempts remaining pill */}
+          {attemptsLeft !== null && !error.includes("wait") && (
+            <div className={`flex items-center justify-center gap-2 text-xs font-bold px-4 py-2 rounded-full border ${
+              attemptsLeft <= 1
+                ? "bg-[#93000a]/30 border-[#ffb4ab]/40 text-[#ffb4ab]"
+                : "bg-[#261938]/60 border-[#a78899]/20 text-[#a78899]"
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${attemptsLeft <= 1 ? "bg-[#ffb4ab]" : "bg-[#a78899]"}`} />
+              {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""} remaining
             </div>
           )}
 

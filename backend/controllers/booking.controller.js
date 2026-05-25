@@ -6,6 +6,7 @@ import {
   fetchTicketById,
   fetchTicketsByPhone,
 } from "../services/booking.service.js";
+import adminSupabase from "../services/supabase.service.js";
 
 // ── GET /my-tickets ───────────────────────────────────────────────────────────
 // Returns all tickets for the authenticated user. Phone comes from the JWT
@@ -136,5 +137,43 @@ export async function bookFree(req, res) {
   } catch (err) {
     console.error("book-free error:", err);
     return res.status(500).json({ error: "Booking failed. Please try again." });
+  }
+}
+
+// ── GET /check-slot ───────────────────────────────────────────────────────────
+export async function checkSlot(req, res) {
+  try {
+    const slot_id = req.query.slot_id;
+    if (!slot_id) {
+      return res.status(400).json({ error: "slot_id query parameter is required." });
+    }
+
+    // 1. Check if user already has a ticket for this slot to prevent duplicate entry
+    const { data: existingTicket, error: ticketError } = await adminSupabase
+      .from("tickets")
+      .select("id")
+      .eq("phone", req.userPhone) // set by requireUserToken middleware
+      .eq("slot_id", slot_id)
+      .maybeSingle();
+
+    if (ticketError) {
+      console.error("checkSlot DB error:", ticketError.message);
+      throw ticketError;
+    }
+
+    if (existingTicket) {
+      return res.json({ allowed: false, reason: "DUPLICATE_TICKET" });
+    }
+
+    // 2. Check if the slot is full or not released
+    const isAvailable = await checkSlotAvailable(slot_id);
+    if (!isAvailable) {
+      return res.json({ allowed: false, reason: "SLOT_FULL" });
+    }
+
+    return res.json({ allowed: true });
+  } catch (err) {
+    console.error("checkSlot error:", err);
+    return res.status(500).json({ error: "Failed to verify slot availability." });
   }
 }
