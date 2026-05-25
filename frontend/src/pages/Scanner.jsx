@@ -18,6 +18,8 @@ function extractTicketId(raw) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+const MAX_ATTEMPTS = 5;
+
 export default function Scanner() {
   const [input, setInput]               = useState("");
   const [scanState, setScanState]       = useState(null);
@@ -25,6 +27,7 @@ export default function Scanner() {
   const [loading, setLoading]           = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError]   = useState("");
+  const [attempts, setAttempts]         = useState(0); // attempts for current ticket
   const isFrontCamera = useRef(false);  // track facing mode for mirror logic
   const html5QrRef = useRef(null);
 
@@ -114,10 +117,17 @@ export default function Scanner() {
   const processTicket = async (rawText) => {
     setScanState(null);
     setTicket(null);
+    setAttempts(0);
     setLoading(true);
 
     const ticketId = extractTicketId(rawText);
-    if (!ticketId) { setScanState("invalid"); setLoading(false); return; }
+    if (!ticketId) {
+      setScanState("invalid");
+      setLoading(false);
+      // Auto-release so camera can scan next ticket immediately
+      scanningRef.current = false;
+      return;
+    }
 
     try {
       const { data } = await axios.get(`${API}/scanner-ticket?id=${ticketId}`, {
@@ -126,11 +136,13 @@ export default function Scanner() {
       const t = data.ticket;
       setTicket(t);
 
-      if (t.rejected)     setScanState("rejected_prev");
+      if (t.rejected)        setScanState("rejected_prev");
       else if (t.checked_in) setScanState("already_entered");
-      else                setScanState("pending");
+      else                   setScanState("pending");
     } catch (err) {
       setScanState(err.response?.status === 404 ? "invalid" : "error");
+      // Auto-release on error/not-found so camera keeps working
+      scanningRef.current = false;
     }
     setLoading(false);
   };
@@ -138,20 +150,32 @@ export default function Scanner() {
   const handleScan = () => { if (input.trim()) processTicket(input.trim()); };
 
   const handleAllow = async () => {
+    if (attempts >= MAX_ATTEMPTS) return;
     setLoading(true);
+    const nextAttempt = attempts + 1;
+    setAttempts(nextAttempt);
     try {
       await axios.post(`${API}/scanner-checkin`, { action: "checkin", ticket_id: ticket.id }, { headers: authHeader() });
       setScanState("allowed");
-    } catch (err) { console.error("Check-in error:", err); }
+    } catch (err) {
+      console.error("Check-in error:", err);
+      if (nextAttempt >= MAX_ATTEMPTS) setScanState("locked");
+    }
     setLoading(false);
   };
 
   const handleReject = async () => {
+    if (attempts >= MAX_ATTEMPTS) return;
     setLoading(true);
+    const nextAttempt = attempts + 1;
+    setAttempts(nextAttempt);
     try {
       await axios.post(`${API}/scanner-checkin`, { action: "reject", ticket_id: ticket.id }, { headers: authHeader() });
       setScanState("rejected");
-    } catch (err) { console.error("Reject error:", err); }
+    } catch (err) {
+      console.error("Reject error:", err);
+      if (nextAttempt >= MAX_ATTEMPTS) setScanState("locked");
+    }
     setLoading(false);
   };
 
@@ -159,6 +183,7 @@ export default function Scanner() {
     setInput("");
     setScanState(null);
     setTicket(null);
+    setAttempts(0);
     scanningRef.current = false; // allow next scan
     // Camera stays running — no need to restart
   };
@@ -286,11 +311,20 @@ export default function Scanner() {
               { label: "College", value: ticket.college },
               { label: "Phone",   value: ticket.phone },
               { label: "Event", value: ticket._eventSlotLabel },
+              { label: "Attempts", value: `${attempts} / ${MAX_ATTEMPTS}` },
             ]}
             actions={[
-              { label: loading ? "…" : "✅ Allow Entry", color: "#16a34a", onClick: handleAllow, disabled: loading },
-              { label: "❌ Reject",                       color: "#d0312d", onClick: handleReject, disabled: loading },
+              { label: loading ? "…" : "✅ Allow Entry", color: "#16a34a", onClick: handleAllow, disabled: loading || attempts >= MAX_ATTEMPTS },
+              { label: "❌ Reject",                       color: "#d0312d", onClick: handleReject, disabled: loading || attempts >= MAX_ATTEMPTS },
             ]}
+          />
+        )}
+
+        {/* ── Action locked after 5 attempts ── */}
+        {scanState === "locked" && (
+          <Outcome icon="🔒" title="Action Locked" titleColor="#7c3aed" bg="#f5f0ff" border="#7c3aed"
+            sub={`${MAX_ATTEMPTS} failed attempts. Please contact a supervisor.`}
+            actions={[{ label: "Scan Again", color: "#7c3aed", onClick: handleReset }]}
           />
         )}
 

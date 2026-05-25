@@ -1,5 +1,6 @@
 import { signToken, verifyToken } from "../services/jwt.service.js";
 import adminSupabase from "../services/supabase.service.js";
+import { isBlacklisted } from "../services/tokenBlacklist.service.js";
 
 
 export async function adminLogin(req, res) {
@@ -47,6 +48,8 @@ export async function scannerLogin(req, res) {
 export async function verifyTokenHandler(req, res) {
   const { token } = req.body;
   if (!token) return res.status(401).json({ valid: false });
+  // Reject blacklisted (logged-out) tokens — fixes the Burp 200 OK bypass
+  if (await isBlacklisted(token)) return res.status(401).json({ valid: false });
   try {
     const payload = verifyToken(token);
     return res.json({ valid: true, payload });

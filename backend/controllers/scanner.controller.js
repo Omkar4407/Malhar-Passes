@@ -16,7 +16,7 @@ const TICKET_SELECT = `
 
 // ── GET /scanner/ticket/:id ───────────────────────────────────────────────────
 export async function getTicket(req, res) {
-  const { id } = req.params;
+  const id = req.params.id || req.query.id;
   if (!id) return res.status(400).json({ error: "Missing ticket ID." });
 
   const { data, error } = await adminSupabase
@@ -115,4 +115,35 @@ function normaliseTicket(t) {
         ? `${eventName} [${slotName}]`
         : eventName || slotName || null,
   };
+}
+
+// ── POST /scanner-checkin ─────────────────────────────────────────────────────
+export async function scannerCheckin(req, res) {
+  const { action, ticket_id } = req.body;
+  const id = ticket_id;
+  if (!id) return res.status(400).json({ error: "Missing ticket_id." });
+
+  if (action === "checkin") {
+    const { data, error } = await adminSupabase
+      .from("tickets")
+      .update({ checked_in: true, checked_in_at: new Date().toISOString(), rejected: false })
+      .eq("id", id)
+      .select(TICKET_SELECT)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: "Ticket not found." });
+    return res.json({ success: true, ticket: normaliseTicket(data) });
+  } else if (action === "reject") {
+    const { data, error } = await adminSupabase
+      .from("tickets")
+      .update({ rejected: true })
+      .eq("id", id)
+      .select(TICKET_SELECT)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: "Ticket not found." });
+    return res.json({ success: true, ticket: normaliseTicket(data) });
+  } else {
+    return res.status(400).json({ error: "Invalid action. Use 'checkin' or 'reject'." });
+  }
 }

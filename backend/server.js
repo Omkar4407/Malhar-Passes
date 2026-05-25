@@ -33,6 +33,8 @@ app.use(
     },
     methods: ["GET", "POST", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    // Expose rate-limit headers so the frontend can read remaining attempts
+    exposedHeaders: ["RateLimit-Remaining", "RateLimit-Limit", "RateLimit-Reset", "Retry-After"],
     credentials: true,
   })
 );

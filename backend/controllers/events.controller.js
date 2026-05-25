@@ -17,7 +17,9 @@ export async function getEvents(req, res) {
 // Public endpoint — returns ALL slots for the event (released and unreleased).
 // The frontend decides how to render based on is_released.
 export async function getSlots(req, res) {
-  const { id } = req.params;
+  const id = req.params.id || req.query.event_id || req.query.id;
+  if (!id) return res.status(400).json({ error: "event_id is required." });
+
   const { data, error } = await adminSupabase
     .from("slots")
     .select("id, name, date, time, capacity, booked_count, is_released, event_id")
@@ -71,7 +73,9 @@ export async function createEvent(req, res) {
 
 // ── PATCH /admin/events/:id ───────────────────────────────────────────────────
 export async function updateEvent(req, res) {
-  const { id } = req.params;
+  const id = req.params.id || req.body.event_id || req.body.id;
+  if (!id) return res.status(400).json({ error: "event_id is required." });
+
   const { name, price } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: "Event name is required." });
   const { data, error } = await adminSupabase
@@ -86,7 +90,9 @@ export async function updateEvent(req, res) {
 
 // ── DELETE /admin/events/:id ──────────────────────────────────────────────────
 export async function deleteEvent(req, res) {
-  const { id } = req.params;
+  const id = req.params.id || req.body.event_id || req.body.id || req.query.event_id || req.query.id;
+  if (!id) return res.status(400).json({ error: "event_id is required." });
+
   await adminSupabase.from("slots").delete().eq("event_id", id);
   const { error } = await adminSupabase.from("events").delete().eq("id", id);
   if (error) return res.status(500).json({ error: "Failed to delete event." });
@@ -118,7 +124,9 @@ export async function createSlot(req, res) {
 
 // ── PATCH /admin/slots/:id ────────────────────────────────────────────────────
 export async function updateSlot(req, res) {
-  const { id } = req.params;
+  const id = req.params.id || req.body.slot_id || req.body.id;
+  if (!id) return res.status(400).json({ error: "slot_id is required." });
+
   const { name, time, capacity } = req.body;
   const updates = {};
   if (name)               updates.name     = name.trim();
@@ -132,7 +140,9 @@ export async function updateSlot(req, res) {
 
 // ── DELETE /admin/slots/:id ───────────────────────────────────────────────────
 export async function deleteSlot(req, res) {
-  const { id } = req.params;
+  const id = req.params.id || req.body.slot_id || req.body.id || req.query.slot_id || req.query.id;
+  if (!id) return res.status(400).json({ error: "slot_id is required." });
+
   const { error } = await adminSupabase.from("slots").delete().eq("id", id);
   if (error) return res.status(500).json({ error: "Failed to delete slot." });
   return res.json({ success: true });

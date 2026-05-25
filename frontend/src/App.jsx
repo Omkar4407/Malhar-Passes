@@ -86,6 +86,9 @@ function App() {
             );
             if (data.token) {
               localStorage.setItem("userToken", data.token);
+              if (data.user && data.user.email) {
+                localStorage.setItem("userPhone", data.user.email);
+              }
               // Force reload to update token guards
               window.location.reload();
             }
@@ -95,6 +98,7 @@ function App() {
         }
       } else if (event === "SIGNED_OUT") {
         localStorage.removeItem("userToken");
+        localStorage.removeItem("userPhone");
       }
     });
 
