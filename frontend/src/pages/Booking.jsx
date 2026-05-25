@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase";
+
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { bustSlotsCache } from "./Events";
@@ -85,25 +85,31 @@ export default function Booking() {
     if (error) setError("");
   };
 
+  const readAsBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleUploadPhoto = async () => {
     if (!photo) return;
     setUploading(true);
     setError("");
     try {
+      const fileData = await readAsBase64(photo);
       const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${photo.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("photos")
-        .upload(fileName, photo);
-
-      if (uploadError) {
-        setError("Photo upload failed. Please try again.");
-        return;
-      }
-
-      const { data: urlData } = supabase.storage.from("photos").getPublicUrl(fileName);
-      setPhotoUrl(urlData.publicUrl);
+      const { data } = await axios.post(
+        `${API}/upload`,
+        { fileData, fileName },
+        { headers: authHeader() }
+      );
+      setPhotoUrl(data.publicUrl);
     } catch (err) {
-      setError("Photo upload failed. Please try again.");
+      console.error("Photo upload error:", err);
+      setError(err.response?.data?.error || "Photo upload failed. Please try again.");
     } finally {
       setUploading(false);
     }

@@ -1,16 +1,16 @@
 import { useEffect, useState, useRef } from "react";
-import { supabase } from "../lib/supabase";
+import axios from "axios";
 import { lsCached, lsBust } from "../lib/cache";
 import Header from "../components/Header";
 import { Camera, Save, User, Mail, GraduationCap, Phone, Loader2 } from "lucide-react";
+
+const API = import.meta.env.VITE_BACKEND_URL;
 
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 const PROFILE_TTL = 5 * 60_000;
 
 export default function Account() {
-  const phone = localStorage.getItem("userPhone");
-
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,6 +20,7 @@ export default function Account() {
     full_name: "",
     email: "",
     college: "",
+    phone_number: "",
   });
 
   const [photo, setPhoto] = useState(null);
@@ -30,22 +31,21 @@ export default function Account() {
 
   const fetchUser = async () => {
     try {
-      const data = await lsCached(`profile:${phone}`, PROFILE_TTL, async () => {
-        const { data: row, error } = await supabase
-          .from("users")
-          .select("*")
-          .eq("phone_number", phone)
-          .maybeSingle();
-        if (error) throw error;
-        return row;
+      const token = localStorage.getItem("userToken");
+      const { data } = await axios.get(`${API}/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      if (data) {
-        setUser(data);
+      if (data && data.user) {
+        setUser(data.user);
         setForm({
-          full_name: data.full_name || "",
-          email: data.email || "",
-          college: data.college || "",
+          full_name: data.user.full_name || "",
+          email: data.user.email || "",
+          college: data.user.college || "",
+          phone_number: data.user.phone_number || "",
         });
+        if (data.user.phone_number) {
+          localStorage.setItem("userPhone", data.user.phone_number);
+        }
       }
     } catch (err) {
       console.error("Fetch error:", err);
@@ -78,53 +78,70 @@ export default function Account() {
     setPhotoPreview(URL.createObjectURL(file));
   };
 
+  const readAsBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleUpdate = async () => {
     setSaving(true);
     let photoUrl = user?.photo_url;
 
     if (photo) {
-      const fileName = `${Date.now()}-${photo.name}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("photos")
-        .upload(fileName, photo);
-
-      if (uploadErr) {
-        showToast("error", "Photo upload failed. Please try again.");
+      try {
+        const fileData = await readAsBase64(photo);
+        const fileName = `${Date.now()}-${photo.name}`;
+        const token = localStorage.getItem("userToken");
+        const { data: uploadRes } = await axios.post(
+          `${API}/upload`,
+          { fileData, fileName },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        photoUrl = uploadRes.publicUrl;
+      } catch (uploadErr) {
+        showToast("error", uploadErr.response?.data?.error || "Photo upload failed. Please try again.");
         setSaving(false);
         return;
       }
-
-      const { data } = supabase.storage
-        .from("photos")
-        .getPublicUrl(fileName);
-
-      photoUrl = data.publicUrl;
     }
 
-    const { error: updateErr } = await supabase
-      .from("users")
-      .update({
-        full_name: form.full_name,
-        email: form.email,
-        college: form.college,
-        photo_url: photoUrl,
-      })
-      .eq("phone_number", phone);
+    try {
+      const token = localStorage.getItem("userToken");
+      const { data: updateRes } = await axios.patch(
+        `${API}/profile`,
+        {
+          full_name: form.full_name,
+          email: form.email,
+          college: form.college,
+          photo_url: photoUrl,
+          phone_number: form.phone_number
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-    if (updateErr) {
-      showToast("error", "Update failed. Please try again.");
-    } else {
-      lsBust(`profile:${phone}`);
+      if (updateRes.token) {
+        localStorage.setItem("userToken", updateRes.token);
+      }
+      if (updateRes.user?.phone_number) {
+        localStorage.setItem("userPhone", updateRes.user.phone_number);
+      }
+
       showToast("success", "Profile updated successfully!");
       fetchUser();
       setPhoto(null);
       setPhotoPreview(null);
+    } catch (err) {
+      showToast("error", err.response?.data?.error || "Update failed. Please try again.");
     }
     setSaving(false);
   };
 
   const avatarSrc = photoPreview || user?.photo_url || null;
-  const initials = (form.full_name || phone || "?")[0].toUpperCase();
+  const initials = (form.full_name || form.phone_number || "?")[0].toUpperCase();
 
   if (loading) {
     return (
@@ -238,13 +255,19 @@ export default function Account() {
                 <Phone size={16} />
               </div>
               <input
-                value={phone}
-                disabled
-                className="w-full bg-[#0b011c]/50 border border-[#a78899]/10 rounded-xl px-4 py-3.5 pl-11 text-[#a78899]/70 font-mono text-sm cursor-not-allowed"
+                value={form.phone_number}
+                onChange={(e) => setForm({ ...form, phone_number: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                disabled={!!user?.phone_number}
+                placeholder="e.g. 9876543210"
+                className={`w-full bg-[#140725]/80 border rounded-xl px-4 py-3.5 pl-11 text-[#eedcff] placeholder:text-[#a78899]/40 outline-none transition-all duration-300 font-medium ${
+                  user?.phone_number ? "bg-[#0b011c]/50 text-[#a78899]/70 cursor-not-allowed border-[#a78899]/10" : "border-[#a78899]/20 focus:border-[#ff00cf] focus:ring-1 focus:ring-[#ff00cf]/50"
+                }`}
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#16a34a] bg-[#16a34a]/10 px-2 py-1 rounded">
-                VERIFIED
-              </div>
+              {user?.phone_number && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#16a34a] bg-[#16a34a]/10 px-2 py-1 rounded">
+                  VERIFIED
+                </div>
+              )}
             </div>
           </div>
         </div>

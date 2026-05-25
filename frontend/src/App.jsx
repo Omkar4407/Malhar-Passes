@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Booking from "./pages/Booking";
@@ -11,7 +11,6 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminEvents from "./pages/AdminEvents";
 import Account from "./pages/Account";
 import ScannerLogin from "./pages/ScannerLogin";
-import { supabase } from "./lib/supabase";
 
 const API = import.meta.env.VITE_BACKEND_URL;
 
@@ -72,37 +71,67 @@ function ScannerRoute({ children }) {
   return <TokenGuard tokenKey="scannerToken" redirectTo="/scanner-login">{children}</TokenGuard>;
 }
 
-function App() {
+function AuthCallback() {
+  const navigate = useNavigate();
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        // Exchange Supabase token for our custom backend token
-        if (!localStorage.getItem("userToken")) {
-          try {
-            const { data } = await axios.post(
-              `${API}/auth-supabase`, 
-              { access_token: session.access_token },
-              { headers: { Authorization: `Bearer ${session.access_token}` } }
-            );
-            if (data.token) {
-              localStorage.setItem("userToken", data.token);
-              // Force reload to update token guards
-              window.location.reload();
-            }
-          } catch (err) {
-            console.error("Failed to authenticate with backend:", err);
-          }
+    const handleCallback = async () => {
+      try {
+        const hash = window.location.hash;
+        if (!hash) {
+          navigate("/", { replace: true });
+          return;
         }
-      } else if (event === "SIGNED_OUT") {
-        localStorage.removeItem("userToken");
+
+        const params = new URLSearchParams(hash.substring(1));
+        const accessToken = params.get("access_token");
+
+        if (!accessToken) {
+          navigate("/", { replace: true });
+          return;
+        }
+
+        const { data } = await axios.post(`${API}/auth-supabase`, {
+          access_token: accessToken,
+        });
+
+        if (data.token) {
+          localStorage.setItem("userToken", data.token);
+          if (data.user) {
+            localStorage.setItem("userEmail", data.user.email || "");
+          }
+          // Force redirect and full reload to update Header and ProtectedRoutes
+          window.location.href = "/";
+        } else {
+          navigate("/", { replace: true });
+        }
+      } catch (err) {
+        console.error("Auth callback error:", err);
+        navigate("/", { replace: true });
       }
-    });
-
-    return () => {
-      subscription.unsubscribe();
     };
-  }, []);
 
+    handleCallback();
+  }, [navigate]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0b011c", color: "#eedcff", fontFamily: "Montserrat, sans-serif" }}>
+      <div style={{
+        width: "36px",
+        height: "36px",
+        border: "4px solid rgba(255,0,207,0.2)",
+        borderTop: "4px solid #ff00cf",
+        borderRadius: "50%",
+        animation: "_spin 0.8s linear infinite",
+        marginBottom: "16px"
+      }} />
+      <style>{`@keyframes _spin { to { transform: rotate(360deg); } }`}</style>
+      <p style={{ fontWeight: 600, letterSpacing: "0.05em" }}>Completing sign in...</p>
+    </div>
+  );
+}
+
+function App() {
   return (
     <Routes>
       {/* Set Events as the main public landing page */}
@@ -111,6 +140,9 @@ function App() {
       
       <Route path="/admin-login"   element={<AdminLogin />} />
       <Route path="/scanner-login" element={<ScannerLogin />} />
+      
+      {/* Google OAuth Callback route */}
+      <Route path="/auth/callback" element={<AuthCallback />} />
 
       {/* Protected Routes (Require login via Google to book/view tickets) */}
       <Route path="/slots"     element={<ProtectedRoute><Slots /></ProtectedRoute>} />
