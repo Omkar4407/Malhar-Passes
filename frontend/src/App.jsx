@@ -11,6 +11,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminEvents from "./pages/AdminEvents";
 import Account from "./pages/Account";
 import ScannerLogin from "./pages/ScannerLogin";
+import Onboarding from "./pages/Onboarding";
 import { supabase } from "./lib/supabase";
 
 const API = import.meta.env.VITE_BACKEND_URL;
@@ -64,6 +65,13 @@ function ProtectedRoute({ children }) {
   return <TokenGuard tokenKey="userToken" redirectTo="/">{children}</TokenGuard>;
 }
 
+// Redirects logged-in users to /onboarding if they haven't completed it yet
+function OnboardingGuard({ children }) {
+  const onboarded = localStorage.getItem("onboardingComplete") === "true";
+  if (!onboarded) return <Navigate to="/onboarding" replace />;
+  return children;
+}
+
 function AdminRoute({ children }) {
   return <TokenGuard tokenKey="adminToken" redirectTo="/admin-login">{children}</TokenGuard>;
 }
@@ -86,8 +94,22 @@ function App() {
             );
             if (data.token) {
               localStorage.setItem("userToken", data.token);
-              // Force reload to update token guards
-              window.location.reload();
+              
+              // Check DB for onboarding status
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("is_onboarded, photo_url")
+                .eq("id", session.user.id)
+                .single();
+
+              if (profile?.is_onboarded) {
+                localStorage.setItem("onboardingComplete", "true");
+                if (profile.photo_url) localStorage.setItem("userAvatar", profile.photo_url);
+                window.location.reload();
+              } else {
+                localStorage.removeItem("onboardingComplete");
+                window.location.href = "/onboarding";
+              }
             }
           } catch (err) {
             console.error("Failed to authenticate with backend:", err);
@@ -95,6 +117,7 @@ function App() {
         }
       } else if (event === "SIGNED_OUT") {
         localStorage.removeItem("userToken");
+        localStorage.removeItem("onboardingComplete");
       }
     });
 
@@ -112,11 +135,14 @@ function App() {
       <Route path="/admin-login"   element={<AdminLogin />} />
       <Route path="/scanner-login" element={<ScannerLogin />} />
 
-      {/* Protected Routes (Require login via Google to book/view tickets) */}
-      <Route path="/slots"     element={<ProtectedRoute><Slots /></ProtectedRoute>} />
-      <Route path="/booking"   element={<ProtectedRoute><Booking /></ProtectedRoute>} />
-      <Route path="/ticket"    element={<ProtectedRoute><Ticket /></ProtectedRoute>} />
-      <Route path="/account"   element={<ProtectedRoute><Account /></ProtectedRoute>} />
+      {/* Onboarding (login required, but no onboarding guard to avoid loop) */}
+      <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+
+      {/* Protected Routes (Require login + completed onboarding) */}
+      <Route path="/slots"     element={<ProtectedRoute><OnboardingGuard><Slots /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/booking"   element={<ProtectedRoute><OnboardingGuard><Booking /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/ticket"    element={<ProtectedRoute><OnboardingGuard><Ticket /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/account"   element={<ProtectedRoute><OnboardingGuard><Account /></OnboardingGuard></ProtectedRoute>} />
 
       <Route path="/admin"        element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/admin-events" element={<AdminRoute><AdminEvents /></AdminRoute>} />

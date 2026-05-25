@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { LogIn, User } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
@@ -11,9 +12,32 @@ export default function Header() {
 
   const isAdminOrScanner = ADMIN_PATHS.includes(location.pathname);
   
-  // For now, checking if userToken exists. 
-  // You can replace this with Supabase auth state later.
   const isLoggedIn = !!localStorage.getItem("userToken");
+
+  const [avatar, setAvatar] = useState(null);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      const cached = localStorage.getItem("userAvatar");
+      if (cached) setAvatar(cached);
+
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          supabase
+            .from("profiles")
+            .select("photo_url")
+            .eq("id", user.id)
+            .single()
+            .then(({ data }) => {
+              if (data?.photo_url) {
+                setAvatar(data.photo_url);
+                localStorage.setItem("userAvatar", data.photo_url);
+              }
+            });
+        }
+      });
+    }
+  }, [isLoggedIn]);
 
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({ 
@@ -72,17 +96,14 @@ export default function Header() {
           {isLoggedIn ? (
             <>
               <button
-                onClick={() => navigate("/ticket")}
-                className="text-sm font-bold text-[#dab8ff] hover:text-[#ffaddf] transition-colors"
-                style={{ fontFamily: "'Montserrat', sans-serif" }}
+                onClick={() => navigate("/account")}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff00cf]/20 to-[#9d00ff]/20 flex items-center justify-center text-[#ffaddf] hover:text-white border border-[#ff00cf]/30 hover:border-[#ff00cf] transition-all shadow-[0_0_10px_rgba(255,0,207,0.2)] overflow-hidden"
               >
-                My Tickets
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-8 h-8 rounded-full bg-[#3c2e4e] flex items-center justify-center text-[#ffb4ab] hover:bg-[#93000a]/50 border border-[#ffb4ab]/20 transition-all shadow-[0_0_10px_rgba(147,0,10,0.2)]"
-              >
-                <User size={14} />
+                {avatar ? (
+                  <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={14} />
+                )}
               </button>
             </>
           ) : (
