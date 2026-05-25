@@ -19,6 +19,10 @@ async function checkSlotAvailable(slot_id: string): Promise<boolean> {
   return data.booked_count < data.capacity;
 }
 
+declare const Deno: {
+  serve: (handler: (req: Request) => Promise<Response>) => void;
+  env: { get: (key: string) => string | undefined; };
+};
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -26,6 +30,9 @@ Deno.serve(async (req) => {
   try {
     const { phone, email } = await requireUserToken(req);
     const identifier = phone || email || "unknown";
+    // Cashfree customer_id only accepts alphanumeric, _, and -
+    const safeIdentifier = identifier.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+
     const { amount, slot_id, event_id } = await req.json();
 
     if (!amount || !slot_id || !event_id) {
@@ -56,8 +63,8 @@ Deno.serve(async (req) => {
         order_amount: amount,
         order_currency: "INR",
         customer_details: {
-          customer_id: identifier,
-          customer_phone: phone || "0000000000",
+          customer_id: safeIdentifier,
+          customer_phone: phone || "9999999999",
           customer_email: email || undefined,
         },
       }),
