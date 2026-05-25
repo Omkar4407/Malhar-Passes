@@ -1,6 +1,8 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { LogIn, User } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import axios from "axios";
+
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // Admin/scanner paths — Header never shows nav buttons on these
 const ADMIN_PATHS = ["/admin", "/admin-login", "/scanner", "/scanner-login"];
@@ -16,12 +18,15 @@ export default function Header() {
   const isLoggedIn = !!localStorage.getItem("userToken");
 
   const handleGoogleSignIn = async () => {
-    await supabase.auth.signInWithOAuth({ 
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
+    try {
+      const origin = window.location.origin;
+      const { data } = await axios.get(`${API}/auth/google-url?origin=${encodeURIComponent(origin)}`);
+      if (data.url) {
+        window.location.href = data.url;
       }
-    });
+    } catch (err) {
+      console.error("Google Sign-In failed:", err);
+    }
   };
 
   const handleLogout = () => {

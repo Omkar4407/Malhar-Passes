@@ -14,6 +14,9 @@ import {
 // never blocks the read, regardless of how policies are configured.
 export async function getMyTickets(req, res) {
   try {
+    if (!req.userPhone) {
+      return res.json({ tickets: [] });
+    }
     const tickets = await fetchTicketsByPhone(req.userPhone);
     return res.json({ tickets });
   } catch (err) {
@@ -25,6 +28,10 @@ export async function getMyTickets(req, res) {
 // ── POST /create-order ────────────────────────────────────────────────────────
 export async function createOrder(req, res) {
   try {
+    if (!req.userPhone) {
+      return res.status(400).json({ error: "Phone number is required. Please set it in your profile first." });
+    }
+
     const { amount, slot_id, event_id } = req.body;
 
     if (!amount || !slot_id || !event_id) {
@@ -53,6 +60,10 @@ export async function createOrder(req, res) {
 // ── POST /verify-payment ──────────────────────────────────────────────────────
 export async function verifyPayment(req, res) {
   try {
+    if (!req.userPhone) {
+      return res.status(400).json({ success: false, error: "Phone number is required. Please set it in your profile first." });
+    }
+
     const {
       razorpay_order_id,
       razorpay_payment_id,
@@ -104,6 +115,10 @@ export async function verifyPayment(req, res) {
 // ── POST /book-free ───────────────────────────────────────────────────────────
 export async function bookFree(req, res) {
   try {
+    if (!req.userPhone) {
+      return res.status(400).json({ error: "Phone number is required. Please set it in your profile first." });
+    }
+
     const { name, college, slot_id, event_id, photo_url } = req.body;
 
     if (!name || !college || !slot_id || !event_id) {

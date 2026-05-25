@@ -10,6 +10,7 @@ import otpRoutes from "./routes/otp.routes.js";
 import bookingRoutes from "./routes/booking.routes.js";
 import scannerRoutes from "./routes/scanner.routes.js";
 import eventsRoutes  from "./routes/events.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -42,12 +43,20 @@ app.use(express.json());
 // ── Health check (keeps Render free tier awake via UptimeRobot) ───────────────
 app.get("/health", (req, res) => res.json({ ok: true }));
 
+app.use((req, res, next) => {
+  if (req.url === "/auth-supabase") {
+    req.url = "/auth/supabase";
+  }
+  next();
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/", authRoutes);
 app.use("/", otpRoutes);
 app.use("/", bookingRoutes);
 app.use("/", scannerRoutes);
 app.use("/", eventsRoutes);
+app.use("/", userRoutes);
 
 // ── Use PORT from environment (Render sets this automatically) ────────────────
 const PORT = process.env.PORT || 5000;

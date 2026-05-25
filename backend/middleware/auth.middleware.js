@@ -9,10 +9,13 @@ export function requireUserToken(req, res, next) {
   }
   try {
     const payload = verifyToken(auth.slice(7));
-    if (payload.role !== "user" || !payload.phone) {
+    if (payload.role !== "user" && payload.role !== "student") {
       return res.status(403).json({ error: "Invalid token role." });
     }
-    req.userPhone = payload.phone;
+    req.userPhone = payload.phone || null;
+    req.userEmail = payload.email || null;
+    req.userSub = payload.sub || null;
+    req.userName = payload.name || null;
     next();
   } catch {
     return res.status(401).json({ error: "Invalid or expired token." });
