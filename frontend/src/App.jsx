@@ -128,7 +128,6 @@ function AdminLoginCallback() {
   useEffect(() => {
     (async () => {
       try {
-        // Supabase processes the hash fragment automatically
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("No session after OAuth redirect.");
 
@@ -189,7 +188,6 @@ function ScannerLoginCallback() {
         const { data } = await axios.post(
           `${API}/scanner-login`,
           { access_token: session.provider_token }
-          
         );
         localStorage.setItem("scannerToken", data.token);
         localStorage.setItem("scannerAuth", "true");
@@ -239,16 +237,18 @@ function App() {
         const isScannerCallback = window.location.pathname.includes("scanner-login");
         if (isAdminCallback || isScannerCallback) return;
 
-        if (!localStorage.getItem("userToken")) {
+        const existingToken = localStorage.getItem("userToken");
+        const tokenValid = existingToken ? await verifyToken(existingToken) : false;
+        if (!tokenValid) {
           try {
             const { data } = await axios.post(
-              `${API}/auth-supabase`, 
+              `${API}/auth-supabase`,
               { access_token: session.access_token },
               { headers: { Authorization: `Bearer ${session.access_token}` } }
             );
             if (data.token) {
               localStorage.setItem("userToken", data.token);
-              
+
               // Check DB for onboarding status (not localStorage)
               const { data: profile } = await supabase
                 .from("profiles")
@@ -290,20 +290,20 @@ function App() {
     <Routes>
       <Route path="/"            element={<Events />} />
       <Route path="/events"      element={<Navigate to="/" replace />} />
-      
-      <Route path="/admin-login"           element={<AdminLogin />} />
-      <Route path="/admin-login-callback"  element={<AdminLoginCallback />} />
-      <Route path="/scanner-login"         element={<ScannerLogin />} />
+
+      <Route path="/admin-login"            element={<AdminLogin />} />
+      <Route path="/admin-login-callback"   element={<AdminLoginCallback />} />
+      <Route path="/scanner-login"          element={<ScannerLogin />} />
       <Route path="/scanner-login-callback" element={<ScannerLoginCallback />} />
 
       {/* Onboarding (login required, but no onboarding guard to avoid loop) */}
       <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
       {/* Protected Routes (Require login + completed onboarding — DB-verified) */}
-      <Route path="/slots"     element={<ProtectedRoute><OnboardingGuard><Slots /></OnboardingGuard></ProtectedRoute>} />
-      <Route path="/booking"   element={<ProtectedRoute><OnboardingGuard><Booking /></OnboardingGuard></ProtectedRoute>} />
-      <Route path="/ticket"    element={<ProtectedRoute><OnboardingGuard><Ticket /></OnboardingGuard></ProtectedRoute>} />
-      <Route path="/account"   element={<ProtectedRoute><OnboardingGuard><Account /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/slots"   element={<ProtectedRoute><OnboardingGuard><Slots /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/booking" element={<ProtectedRoute><OnboardingGuard><Booking /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/ticket"  element={<ProtectedRoute><OnboardingGuard><Ticket /></OnboardingGuard></ProtectedRoute>} />
+      <Route path="/account" element={<ProtectedRoute><OnboardingGuard><Account /></OnboardingGuard></ProtectedRoute>} />
 
       <Route path="/admin"        element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/admin-events" element={<AdminRoute><AdminEvents /></AdminRoute>} />
