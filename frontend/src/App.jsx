@@ -132,11 +132,11 @@ function AdminLoginCallback() {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("No session after OAuth redirect.");
 
+        if (!session.provider_token) throw new Error("No Google token in session.");
         const { data } = await axios.post(
           `${API}/admin-login`,
-          { access_token: session.access_token }
+          { access_token: session.provider_token }
         );
-
         localStorage.setItem("adminToken", data.token);
         localStorage.setItem("admin", JSON.stringify(data.admin));
 
@@ -185,11 +185,12 @@ function ScannerLoginCallback() {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !session) throw new Error("No session after OAuth redirect.");
 
+        if (!session.provider_token) throw new Error("No Google token in session.");
         const { data } = await axios.post(
           `${API}/scanner-login`,
-          { access_token: session.access_token }
+          { access_token: session.provider_token }
+          
         );
-
         localStorage.setItem("scannerToken", data.token);
         localStorage.setItem("scannerAuth", "true");
         localStorage.setItem("scannerEmail", data.admin.email);

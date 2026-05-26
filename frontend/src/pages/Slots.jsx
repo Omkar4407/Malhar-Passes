@@ -46,7 +46,10 @@ export default function Slots() {
     const fetchSlots = async () => {
       setRefreshing(true);
       try {
-        const { data } = await axios.get(`${API}/get-slots?event_id=${initEvent.id}`);
+        const { data } = await axios.get(
+          `${API}/get-slots?event_id=${initEvent.id}`,
+          { headers: authHeader() }
+        );
         const fresh = data.slots || [];
         setSlots(fresh);
         saveToSession(initEvent, fresh);
@@ -98,7 +101,10 @@ export default function Slots() {
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const { data } = await axios.get(`${API}/get-slots?event_id=${event.id}`);
+      const { data } = await axios.get(
+        `${API}/get-slots?event_id=${event.id}`,
+        { headers: authHeader() }
+      );
       const fresh = data.slots || [];
       setSlots(fresh);
       saveToSession(event, fresh);
