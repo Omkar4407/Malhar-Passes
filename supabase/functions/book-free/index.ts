@@ -1,6 +1,22 @@
 import { handleCors, json, requireUserToken } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 
+// Only allow HTTPS URLs from the project's own Supabase storage bucket,
+// or null/empty.  This prevents SSRF and content-injection via photo_url.
+function sanitizePhotoUrl(url: string | undefined | null, supabaseUrl: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return null;
+    // Must come from our own Supabase storage
+    const supabaseHost = new URL(supabaseUrl).hostname;
+    if (!parsed.hostname.endsWith(supabaseHost)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 declare const Deno: {
   serve: (handler: (req: Request) => Promise<Response>) => void;
   env: { get: (key: string) => string | undefined; };
@@ -20,6 +36,8 @@ Deno.serve(async (req) => {
     if (college.trim().length > 150)
       return json(req, { error: "College name must be 150 characters or fewer." }, 400);
 
+    const safePhotoUrl = sanitizePhotoUrl(photo_url, Deno.env.get("SUPABASE_URL") || "");
+
     const { data, error } = await adminSupabase.rpc("book_slot", {
       p_slot_id: slot_id,
       p_ticket_data: {
@@ -27,7 +45,7 @@ Deno.serve(async (req) => {
         college: college.trim(),
         phone: phone || email, // use whichever identifier is available
         event_id,
-        photo_url,
+        photo_url: safePhotoUrl,
         payment_status: "free",
         razorpay_order_id: null,
         razorpay_payment_id: null,

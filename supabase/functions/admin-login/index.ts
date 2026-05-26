@@ -1,3 +1,7 @@
+// Admin login via Google OAuth — verifies the Google access token,
+// checks that the email is in the admins table with role "super_admin",
+// and returns our own signed JWT (so the rest of the app is unchanged).
+
 import { handleCors, json } from "../_shared/http.ts";
 import { signToken } from "../_shared/jwt.ts";
 import adminSupabase from "../_shared/supabase.ts";
@@ -7,23 +11,39 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
-    const { email, password } = await req.json();
-    if (!password || !email) return json(req, { error: "Email and password are required." }, 400);
-    if (password !== Deno.env.get("ADMIN_PASSWORD"))
-      return json(req, { error: "Incorrect password." }, 401);
+    const { access_token } = await req.json();
+    if (!access_token) return json(req, { error: "Missing Google access_token." }, 400);
 
+    // Verify the Google access token by fetching the user profile from Google
+    const googleRes = await fetch(
+      `https://www.googleapis.com/oauth2/v3/userinfo`,
+      { headers: { Authorization: `Bearer ${access_token}` } }
+    );
+
+    if (!googleRes.ok) {
+      return json(req, { error: "Invalid Google token." }, 401);
+    }
+
+    const googleUser = await googleRes.json();
+    const email = (googleUser.email || "").trim().toLowerCase();
+
+    if (!email || !googleUser.email_verified) {
+      return json(req, { error: "Google account email not verified." }, 401);
+    }
+
+    // Check that email is in admins table with role "super_admin"
     const { data, error: dbError } = await adminSupabase
       .from("admins")
       .select("id, email, role")
-      .eq("email", email.trim().toLowerCase())
+      .eq("email", email)
       .eq("role", "super_admin")
       .single();
 
     if (dbError || !data) {
-      return json(req, { error: "Access denied. This email is not authorised as a super admin." }, 403);
+      return json(req, { error: "Access denied. This Google account is not authorised as a super admin." }, 403);
     }
 
-    const token = await signToken({ role: "super_admin" });
+    const token = await signToken({ role: "super_admin", email, sub: data.id });
     return json(req, { success: true, token, admin: data });
   } catch (err) {
     console.error("admin-login error:", err);

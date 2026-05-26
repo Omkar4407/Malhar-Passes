@@ -19,6 +19,17 @@ async function checkSlotAvailable(slot_id: string): Promise<boolean> {
   return data.booked_count < data.capacity;
 }
 
+// Server-side price validation — client-supplied amount is ignored.
+// We fetch the event price from the DB and use that exclusively.
+async function getEventPrice(event_id: string): Promise<number | null> {
+  const { data } = await adminSupabase
+    .from("events")
+    .select("price")
+    .eq("id", event_id)
+    .single();
+  return data?.price ?? null;
+}
+
 declare const Deno: {
   serve: (handler: (req: Request) => Promise<Response>) => void;
   env: { get: (key: string) => string | undefined; };
@@ -33,10 +44,19 @@ Deno.serve(async (req) => {
     // Cashfree customer_id only accepts alphanumeric, _, and -
     const safeIdentifier = identifier.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
 
-    const { amount, slot_id, event_id } = await req.json();
+    const { slot_id, event_id } = await req.json();
 
-    if (!amount || !slot_id || !event_id) {
-      return json(req, { error: "amount, slot_id, and event_id are required." }, 400);
+    if (!slot_id || !event_id) {
+      return json(req, { error: "slot_id and event_id are required." }, 400);
+    }
+
+    // SECURITY: Fetch amount from DB — never trust client-supplied price
+    const dbAmount = await getEventPrice(event_id);
+    if (dbAmount === null) {
+      return json(req, { error: "Event not found." }, 404);
+    }
+    if (dbAmount <= 0) {
+      return json(req, { error: "This is a free event. Use /book-free instead." }, 400);
     }
 
     const isAvailable = await checkSlotAvailable(slot_id);
@@ -60,7 +80,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         order_id,
-        order_amount: amount,
+        order_amount: dbAmount, // server-fetched, not client-supplied
         order_currency: "INR",
         customer_details: {
           customer_id: safeIdentifier,
@@ -76,10 +96,10 @@ Deno.serve(async (req) => {
       return json(req, { error: "Could not create order. Please try again." }, 500);
     }
 
-    // Return order_id + payment_session_id (needed by Cashfree JS SDK)
     return json(req, {
       order_id: order.order_id,
       payment_session_id: order.payment_session_id,
+      amount: dbAmount, // return the server-validated amount to the frontend
     });
   } catch (err: unknown) {
     const e = err as { status?: number; message?: string };

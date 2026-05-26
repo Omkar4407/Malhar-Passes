@@ -1,37 +1,37 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ShieldAlert, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { ShieldAlert, Loader2 } from "lucide-react";
+import { supabase } from "../lib/supabase";
+
+const API = import.meta.env.VITE_BACKEND_URL;
 
 export default function AdminLogin() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      setError("Please fill in all fields.");
-      return;
-    }
-
-    setLoading(true);
+  const handleGoogleSignIn = async () => {
     setError("");
-
+    setLoading(true);
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin-login`, {
-        email: email.trim().toLowerCase(),
-        password,
+      // Use Supabase OAuth to get a Google token
+      // We use signInWithOAuth with a popup so we can intercept the access_token
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/admin-login-callback`,
+          queryParams: {
+            // Request offline access — gets us a proper access token
+            access_type: "online",
+            prompt: "select_account",
+          },
+          skipBrowserRedirect: false,
+        },
       });
-
-      localStorage.setItem("adminToken", data.token);
-      localStorage.setItem("admin", JSON.stringify(data.admin));
-      navigate("/admin");
+      if (oauthError) throw oauthError;
     } catch (err) {
-      setError(err?.response?.data?.error || "Login failed. Please check your credentials.");
-    } finally {
+      setError(err?.message || "Google sign-in failed.");
       setLoading(false);
     }
   };
@@ -59,9 +59,12 @@ export default function AdminLogin() {
           <h1 className="text-4xl font-black text-[#eedcff] tracking-wide font-['Bebas_Neue']">
             Admin Panel
           </h1>
+          <p className="text-sm text-[#a78899] mt-2 font-medium">
+            Sign in with your authorised Google account
+          </p>
         </div>
 
-        {/* Form Card */}
+        {/* Sign-In Card */}
         <div className="glass-card p-8 border-t-0 rounded-t-none space-y-6 -mt-6 pt-6">
           
           {error && (
@@ -70,53 +73,27 @@ export default function AdminLogin() {
             </div>
           )}
 
-          <div className="space-y-5">
-            <div>
-              <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block mb-2" htmlFor="admin-email">Email Address</label>
-              <input
-                id="admin-email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
-                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 text-[#eedcff] placeholder:text-[#a78899]/40 focus:outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]/50 transition-all font-medium"
-                autoComplete="email"
-                autoFocus
-              />
-            </div>
+          <button
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-3 transition-all bg-white text-[#3c4043] hover:bg-[#f8f9fa] shadow-[0_2px_8px_rgba(60,64,67,0.3)] hover:shadow-[0_4px_12px_rgba(60,64,67,0.4)] disabled:opacity-70 disabled:cursor-not-allowed border border-[#dadce0]"
+          >
+            {loading ? (
+              <Loader2 size={20} className="animate-spin text-[#4285F4]" />
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+            )}
+            {loading ? "Signing in…" : "Sign in with Google"}
+          </button>
 
-            <div>
-              <label className="text-[11px] font-bold text-[#a78899] uppercase tracking-wider block mb-2" htmlFor="admin-password">Password</label>
-              <div className="relative">
-                <input
-                  id="admin-password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
-                  onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                  className="w-full bg-[#140725]/80 border border-[#a78899]/20 rounded-xl px-4 py-3.5 pr-12 text-[#eedcff] placeholder:text-[#a78899]/40 focus:outline-none focus:border-[#ff6b00] focus:ring-1 focus:ring-[#ff6b00]/50 transition-all font-medium"
-                />
-                <button
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a78899] hover:text-[#eedcff] transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full mt-2 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-[#ff6b00] to-[#ff00cf] text-white shadow-[0_0_20px_rgba(255,107,0,0.3)] hover:shadow-[0_0_30px_rgba(255,107,0,0.5)] disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? <Loader2 size={20} className="animate-spin" /> : "Access Dashboard"} 
-              {!loading && <ArrowRight size={20} />}
-            </button>
-          </div>
+          <p className="text-center text-[#a78899]/60 text-xs leading-relaxed">
+            Only Google accounts registered as <strong className="text-[#ff6b00]/80">super_admin</strong> in the admins table will be granted access.
+          </p>
         </div>
 
         <p className="text-center text-[#a78899]/40 text-[10px] uppercase tracking-[0.2em] font-bold">

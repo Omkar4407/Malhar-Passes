@@ -94,6 +94,11 @@ export default function Account() {
   };
 
   const handleLogout = async () => {
+    // Invalidate JWT server-side
+    const token = localStorage.getItem("userToken");
+    if (token) {
+      try { await axios.post(`${API}/logout`, {}, { headers: { Authorization: `Bearer ${token}` } }); } catch {}
+    }
     await supabase.auth.signOut();
     localStorage.removeItem("userToken");
     localStorage.removeItem("onboardingComplete");

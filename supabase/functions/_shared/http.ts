@@ -1,10 +1,23 @@
+// Allowed origins — comma-separated in env var ALLOWED_ORIGINS
+// e.g. "https://malhar.example.com,http://localhost:5173"
+function getAllowedOrigins(): string[] {
+  const raw = Deno.env.get("ALLOWED_ORIGINS") || "http://localhost:5173";
+  return raw.split(",").map((o) => o.trim()).filter(Boolean);
+}
+
 export function corsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("origin") || "*";
+  const origin = req.headers.get("origin") || "";
+  const allowed = getAllowedOrigins();
+
+  // Only reflect the origin if it's in the allowlist — never use "*" with credentials
+  const allowedOrigin = allowed.includes(origin) ? origin : allowed[0];
+
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
+    "Vary": "Origin",
   };
 }
 

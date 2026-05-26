@@ -8,6 +8,20 @@ const CF_BASE = CF_ENV === "sandbox"
   ? "https://sandbox.cashfree.com/pg"
   : "https://api.cashfree.com/pg";
 
+// Only allow HTTPS URLs from our own Supabase storage bucket
+function sanitizePhotoUrl(url: string | undefined | null, supabaseUrl: string): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return null;
+    const supabaseHost = new URL(supabaseUrl).hostname;
+    if (!parsed.hostname.endsWith(supabaseHost)) return null;
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -53,6 +67,8 @@ Deno.serve(async (req) => {
     if (!trimmedCollege || trimmedCollege.length > 150)
       return json(req, { success: false, error: "Invalid college name." }, 400);
 
+    const safePhotoUrl = sanitizePhotoUrl(photo_url, Deno.env.get("SUPABASE_URL") || "");
+
     // Atomically book via book_slot() RPC
     const { data, error } = await adminSupabase.rpc("book_slot", {
       p_slot_id: slot_id,
@@ -61,7 +77,7 @@ Deno.serve(async (req) => {
         college: trimmedCollege,
         phone: phone || email,
         event_id,
-        photo_url,
+        photo_url: safePhotoUrl,
         payment_status: "paid",
         razorpay_order_id: order_id,
         razorpay_payment_id: payment_id,

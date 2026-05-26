@@ -1,11 +1,18 @@
-import { handleCors, json } from "../_shared/http.ts";
+import { handleCors, json, requireUserToken } from "../_shared/http.ts";
 import adminSupabase from "../_shared/supabase.ts";
 
 // GET /functions/v1/get-slots?event_id=<uuid>
-// Mirrors GET /events/:id/slots
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
+
+  // Require a valid user token — prevents unreleased slot enumeration by anon
+  try {
+    await requireUserToken(req);
+  } catch (err: unknown) {
+    const e = err as { status?: number; message?: string };
+    return json(req, { error: e.message }, e.status ?? 401);
+  }
 
   const url = new URL(req.url);
   const event_id = url.searchParams.get("event_id");
