@@ -39,7 +39,10 @@ export default function Events() {
     setNavigating(event.id);
     setError("");
     try {
-      const { data } = await axios.get(`${API}/get-slots?event_id=${event.id}`);
+      const token = localStorage.getItem("userToken");
+      const { data } = await axios.get(`${API}/get-slots?event_id=${event.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const slots = data.slots || [];
 
       if (slots.length === 0) {

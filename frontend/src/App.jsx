@@ -230,7 +230,7 @@ function ScannerLoginCallback() {
 function App() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
         // Only exchange for userToken if we're on a regular user route
         // (admin/scanner callbacks handle their own tokens)
         const isAdminCallback = window.location.pathname.includes("admin-login");
@@ -258,7 +258,9 @@ function App() {
 
               if (profile?.is_onboarded) {
                 if (profile.photo_url) localStorage.setItem("userAvatar", profile.photo_url);
-                window.location.reload();
+                // Only reload on SIGNED_IN (fresh login); INITIAL_SESSION means
+                // we're already on the right page — just silently update the token.
+                if (event === "SIGNED_IN") window.location.reload();
               } else {
                 window.location.href = "/onboarding";
               }
