@@ -61,7 +61,7 @@ export default function Account() {
           phone: profileData.phone || "",
           email: profileData.email || user.email || "",
           photoUrl: profileData.photo_url || null,
-          isXavierite: profileData.is_xavierite,
+          isXavierite: profileData.is_xavierite === true ? "yes" : profileData.is_xavierite === false ? "no" : null,
           college: profileData.institution_name || "",
           course: profileData.course || "",
           year: profileData.year || "",
@@ -224,7 +224,7 @@ export default function Account() {
                   <GridField label="Course" value={profile.course} />
 
                   <GridField label="Academic Year" value={profile.year} showChevron />
-                  <GridField label="Xavierite Status" value={profile.isXavierite === "yes" ? "Yes" : profile.isXavierite === "no" ? "No" : ""} showChevron />
+                  <GridField label="Xavierite Status" value={profile.isXavierite === true || profile.isXavierite === "yes" ? "Yes" : profile.isXavierite === false || profile.isXavierite === "no" ? "No" : ""} showChevron />
                 </div>
               </div>
 

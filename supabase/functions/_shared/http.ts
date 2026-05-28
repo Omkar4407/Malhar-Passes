@@ -1,7 +1,7 @@
 // Allowed origins — comma-separated in env var ALLOWED_ORIGINS
 // e.g. "https://malhar.example.com,http://localhost:5173"
 function getAllowedOrigins(): string[] {
-  const raw = Deno.env.get("ALLOWED_ORIGINS") || "http://mticketing-this-year.vercel.app";
+  const raw = Deno.env.get("ALLOWED_ORIGINS") || "https://mticketing-this-year.vercel.app";
   return raw.split(",").map((o) => o.trim()).filter(Boolean);
 }
 
